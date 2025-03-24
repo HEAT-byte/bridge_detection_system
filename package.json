@@ -1,0 +1,63 @@
+{
+  "name": "bridge-monitoring-system",
+  "version": "1.0.0",
+  "description": "桥梁监测系统桌面应用",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "cross-env NODE_ENV=development electron .",
+    "build": "electron-builder --win --x64",
+    "package": "electron-packager . 桥梁监测系统 --platform=win32 --arch=x64 --out=dist --overwrite",
+    "package-win": "electron-packager . 黑龙江大桥监测系统 --platform=win32 --arch=x64 --out=dist --overwrite"
+  },
+  "build": {
+    "appId": "com.bridge.monitoring",
+    "productName": "黑龙江大桥监测系统",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "黑龙江大桥监测系统"
+    }
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chart.js": "^4.4.1",
+    "three": "^0.160.0",
+    "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.6.4",
+    "electron-packager": "^17.1.2"
+  }
+}

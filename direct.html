@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>黑龙江大桥监测系统</title>
+  
+  <!-- 内联关键样式 -->
+  <style>
+    :root {
+      --primary-color: #007aff;
+      --primary-dark: #0062cc;
+      --secondary-color: #5ac8fa;
+      --success-color: #4cd964;
+      --warning-color: #ffcc00;
+      --danger-color: #ff3b30;
+      --light-color: #f5f5f5;
+      --dark-color: #333333;
+      --gray-color: #8e8e93;
+      --border-color: #dddddd;
+    }
+        
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+        
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+    }
+    
+    body {
+      background-color: var(--light-color);
+      color: var(--dark-color);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* 加载样式 */
+    #systemLoader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+      transition: opacity 0.5s ease;
+    }
+    
+    .loader-spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(0, 122, 255, 0.2);
+      border-top-color: #007aff;
+      border-radius: 50%;
+      animation: loader-spin 1s linear infinite;
+      margin-bottom: 15px;
+    }
+    
+    @keyframes loader-spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .loader-text {
+      font-size: 16px;
+      color: #333;
+      text-align: center;
+    }
+    
+    .loader-progress {
+      width: 250px;
+      height: 4px;
+      background-color: #eee;
+      margin-top: 20px;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    
+    .loader-progress-bar {
+      height: 100%;
+      width: 0%;
+      background-color: #007aff;
+      transition: width 0.2s ease;
+    }
+    
+    /* 登录样式 */
+    .login-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    
+    .login-box {
+      background-color: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      width: 350px;
+    }
+    
+    .login-box h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: var(--primary-color);
+    }
+    
+    .input-group {
+      margin-bottom: 15px;
+    }
+    
+    .input-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    
+    .input-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    .btn {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    
+    .btn-primary {
+      background-color: var(--primary-color);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background-color: var(--primary-dark);
+    }
+    
+    .btn-full {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+    }
+    
+    /* 主界面样式 */
+    .header {
+      background-color: var(--primary-color);
+      color: white;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .logo {
+      font-size: 18px;
+      font-weight: bold;
+    }
+    
+    .user-info {
+      display: flex;
+      align-items: center;
+    }
+    
+    .main-container {
+      display: flex;
+      height: calc(100vh - 52px);
+    }
+    
+    .sidebar {
+      width: 180px;
+      background-color: #f0f0f0;
+      border-right: 1px solid var(--border-color);
+    }
+    
+    .nav-item {
+      padding: 12px 15px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      border-left: 3px solid transparent;
+    }
+    
+    .nav-item:hover {
+      background-color: #e0e0e0;
+    }
+    
+    .nav-item.active {
+      background-color: #e8f1ff;
+      color: var(--primary-color);
+      font-weight: bold;
+      border-left: 3px solid var(--primary-color);
+    }
+    
+    .content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    /* 卡片样式 */
+    .card {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      padding: 15px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-bottom: 15px;
+    }
+    
+    .chart-container {
+      height: 250px;
+      margin-top: 10px;
+      position: relative;
+    }
+  </style>
+  
+  <!-- 错误隔离处理 -->
+  <script>
+    // 屏蔽Chrome API错误
+    (function() {
+      // 拦截Console方法
+      const origConsole = {
+        error: console.error,
+        warn: console.warn,
+        log: console.log
+      };
+      
+      // 检查错误信息是否为Chrome API错误
+      const isChromeAPIError = (msg) => {
+        if (!msg) return false;
+        const errorText = String(msg);
+        return errorText.includes('runtime.lastError') || 
+               errorText.includes('message port closed') || 
+               errorText.includes('Receiving end does not exist') ||
+               errorText.includes('Could not establish connection');
+      };
+      
+      // 替换console方法
+      console.error = function() {
+        if (arguments.length > 0 && isChromeAPIError(arguments[0])) {
+          return;
+        }
+        origConsole.error.apply(console, arguments);
+      };
+      
+      console.warn = function() {
+        if (arguments.length > 0 && isChromeAPIError(arguments[0])) {
+          return;
+        }
+        origConsole.warn.apply(console, arguments);
+      };
+      
+      // 修复Error对象
+      const OrigError = Error;
+      window.Error = function(message) {
+        if (message && isChromeAPIError(message)) {
+          return Object.create(Error.prototype);
+        }
+        return new OrigError(message);
+      };
+      window.Error.prototype = OrigError.prototype;
+      
+      // 拦截全局错误
+      window.addEventListener('error', function(e) {
+        if (e && e.message && isChromeAPIError(e.message)) {
+          e.preventDefault();
+          e.stopPropagation();
+          return true;
+        }
+      }, true);
+      
+      // 拦截Promise错误
+      window.addEventListener('unhandledrejection', function(e) {
+        const reason = e.reason && (e.reason.message || e.reason);
+        if (reason && isChromeAPIError(reason)) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }, true);
+      
+      // 创建空的chrome对象
+      const noop = () => Promise.resolve({});
+      window.chrome = {
+        runtime: {
+          lastError: null,
+          sendMessage: noop,
+          connect: () => ({
+            postMessage: noop,
+            disconnect: noop,
+            onMessage: { addListener: noop },
+            onDisconnect: { addListener: noop }
+          }),
+          onMessage: { addListener: noop }
+        }
+      };
+      
+      console.log('Chrome API错误防护已激活');
+    })();
+  </script>
+  
+  <!-- 预加载关键资源 -->
+  <link rel="preload" href="chart.min.js" as="script">
+  <link rel="preload" href="bridge-vector.js" as="script">
+  <link rel="preload" href="js/utils.js" as="script">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- 加载指示器 -->
+  <div id="systemLoader">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">正在加载黑龙江大桥监测系统...</div>
+    <div class="loader-progress">
+      <div class="loader-progress-bar" id="loaderProgressBar"></div>
+    </div>
+  </div>
+  
+  <!-- 登录界面 -->
+  <div class="login-container" id="login-container" style="display:none;">
+    <div class="login-box">
+      <h2>黑龙江大桥监测系统</h2>
+      <form id="login-form">
+        <div class="input-group">
+          <label for="username">用户名</label>
+          <input type="text" id="username" name="username" required aria-label="用户名">
+        </div>
+        <div class="input-group">
+          <label for="password">密码</label>
+          <input type="password" id="password" name="password" required aria-label="密码">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">登录</button>
+      </form>
+    </div>
+  </div>
+  
+  <!-- 主界面 -->
+  <div id="main-app" style="display:none;">
+    <div class="header">
+      <div class="logo">黑龙江大桥监测系统</div>
+      <div class="user-info">
+        <span class="user-name" id="user-display">管理员</span>
+        <button class="logout-btn" id="logout-btn">退出</button>
+      </div>
+    </div>
+          
+    <div class="main-container">
+      <div class="sidebar">
+        <div class="nav-item active" data-tab="dashboard">系统概览</div>
+        <div class="nav-item" data-tab="bridge-model">桥梁模型</div>
+        <div class="nav-item" data-tab="data-analysis">数据分析</div>
+        <div class="nav-item" data-tab="settings">系统设置</div>
+      </div>
+          
+      <div class="content">
+        <div id="tab-contents">
+          <!-- 内容将通过JavaScript动态加载 -->
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 核心功能加载器 -->
+  <script>
+    // 系统加载器
+    (function() {
+      const progressBar = document.getElementById('loaderProgressBar');
+      const loader = document.getElementById('systemLoader');
+      const loginContainer = document.getElementById('login-container');
+      const mainApp = document.getElementById('main-app');
+      const loaderText = document.querySelector('.loader-text');
+      
+      // 更新加载进度
+      function updateProgress(percent, text) {
+        progressBar.style.width = percent + '%';
+        if (text) loaderText.textContent = text;
+      }
+      
+      // 延迟函数
+      function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+      }
+      
+      // 加载脚本
+      function loadScript(url) {
+        return new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = url;
+          script.onload = resolve;
+          script.onerror = () => {
+            console.log(`无法加载脚本: ${url}，尝试继续`);
+            resolve(); // 即使失败也继续
+          };
+          document.head.appendChild(script);
+        });
+      }
+      
+      // 开始加载
+      async function startLoading() {
+        try {
+          // 加载必要的JS库
+          updateProgress(10, '正在加载核心库...');
+          await loadScript('chart.min.js');
+          
+          updateProgress(30, '正在加载桥梁模型组件...');
+          await loadScript('bridge-vector.js');
+          
+          updateProgress(50, '正在加载工具库...');
+          await loadScript('js/utils.js');
+          
+          // 加载HTML内容到tab-contents
+          updateProgress(70, '正在准备界面组件...');
+          try {
+            const response = await fetch('index.html');
+            const html = await response.text();
+            
+            // 提取tab内容
+            const tabContentMatches = html.match(/<div class="tab-content.*?id="([^"]+)">([\s\S]*?)<\/div>\s*?<div class="tab-content/g);
+            
+            if (tabContentMatches && tabContentMatches.length > 0) {
+              let allTabsHtml = '';
+              
+              tabContentMatches.forEach(match => {
+                allTabsHtml += match.replace(/<div class="tab-content.*?id="([^"]+)">([\s\S]*?)$/g, '<div class="tab-content" id="$1">$2</div>');
+              });
+              
+              // 获取最后一个tab
+              const lastTabMatch = html.match(/<div class="tab-content.*?id="settings">([\s\S]*?)<\/div>\s*?<\/div>\s*?<\/div>/);
+              if (lastTabMatch && lastTabMatch[0]) {
+                allTabsHtml += lastTabMatch[0].replace(/<div class="tab-content.*?id="([^"]+)">([\s\S]*?)<\/div>\s*?<\/div>\s*?<\/div>/g, 
+                  '<div class="tab-content" id="$1">$2</div>');
+              }
+              
+              document.getElementById('tab-contents').innerHTML = allTabsHtml;
+            }
+          } catch (e) {
+            console.log('加载界面内容失败，尝试继续:', e);
+          }
+          
+          updateProgress(90, '初始化系统...');
+          await delay(500);
+          
+          // 模拟数据
+          await loadSystemData();
+          
+          // 完成加载，显示登录
+          updateProgress(100, '系统加载完成!');
+          await delay(300);
+          
+          // 显示登录界面
+          loader.style.opacity = '0';
+          setTimeout(() => {
+            loader.style.display = 'none';
+            checkLoginStatus();
+          }, 500);
+        } catch (err) {
+          console.error('加载过程发生错误:', err);
+          loaderText.textContent = '加载失败，请刷新页面重试';
+        }
+      }
+      
+      // 生成系统数据
+      async function loadSystemData() {
+        // 创建模拟数据
+        window.systemData = {
+          sensors: [],
+          tempData: [],
+          vibrationData: [],
+          tiltData: []
+        };
+        
+        // 生成传感器
+        for (let i = 1; i <= 86; i++) {
+          const sensorType = i % 3 === 0 ? 'temperature' : (i % 3 === 1 ? 'vibration' : 'tilt');
+          const section = i <= 30 ? 1 : (i <= 60 ? 2 : 3);
+          const status = i % 20 === 0 ? 'warning' : (i % 50 === 0 ? 'alert' : 'normal');
+          
+          systemData.sensors.push({
+            id: `sensor-${i}`,
+            name: `传感器 ${i}`,
+            type: sensorType,
+            section: section,
+            location: `区段${section}-${i}`,
+            status: status,
+            lastUpdated: new Date().toISOString()
+          });
+        }
+        
+        // 生成温度数据
+        const now = new Date();
+        for (let i = 0; i < 24; i++) {
+          const time = new Date(now.getTime() - (24 - i) * 60 * 60 * 1000);
+          const hour = time.getHours();
+          let baseTemp = 20;
+          
+          // 模拟日间温度变化
+          if (hour >= 6 && hour <= 12) {
+            baseTemp = 10 + (hour - 6) * (20 / 6);
+          } else if (hour > 12 && hour <= 20) {
+            baseTemp = 30 - (hour - 12) * (15 / 8);
+          } else {
+            baseTemp = 15 - (hour > 20 ? (hour - 20) : (24 + hour - 20)) * (5 / 10);
+          }
+          
+          const randomVariation = (Math.random() * 4) - 2;
+          
+          systemData.tempData.push({
+            time: time,
+            value: baseTemp + randomVariation,
+            rawTime: time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+          });
+        }
+        
+        // 生成振动数据
+        for (let i = 0; i < 24; i++) {
+          const time = new Date(now.getTime() - (24 - i) * 60 * 60 * 1000);
+          const hour = time.getHours();
+          let baseVibration = 3;
+          
+          if (hour >= 8 && hour <= 18) {
+            baseVibration = 8 + Math.sin((hour - 8) * (Math.PI / 10)) * 3;
+            if ((hour >= 8 && hour <= 9) || (hour >= 17 && hour <= 18)) {
+              baseVibration += 4;
+            }
+          }
+          
+          const randomVariation = (Math.random() * 3);
+          
+          systemData.vibrationData.push({
+            time: time,
+            value: baseVibration + randomVariation,
+            rawTime: time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+          });
+        }
+      }
+      
+      // 检查登录状态
+      function checkLoginStatus() {
+        const loggedIn = localStorage.getItem('loggedIn');
+        const username = localStorage.getItem('username');
+        
+        if (loggedIn === 'true' && username) {
+          showMainApp(username);
+        } else {
+          showLoginScreen();
+        }
+      }
+      
+      // 显示登录界面
+      function showLoginScreen() {
+        loginContainer.style.display = 'flex';
+        
+        // 添加登录事件
+        const loginForm = document.getElementById('login-form');
+        loginForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          const username = document.getElementById('username').value;
+          const password = document.getElementById('password').value;
+          
+          if (username && password) {
+            localStorage.setItem('loggedIn', 'true');
+            localStorage.setItem('username', username);
+            loginContainer.style.display = 'none';
+            showMainApp(username);
+          }
+        });
+      }
+      
+      // 显示主应用
+      function showMainApp(username) {
+        document.getElementById('user-display').textContent = username;
+        mainApp.style.display = 'block';
+        
+        // 初始化导航
+        initNavigation();
+        
+        // 初始化图表
+        initCharts();
+        
+        // 初始化桥梁模型
+        setTimeout(initBridgeModel, 100);
+        
+        // 设置登出事件
+        document.getElementById('logout-btn').addEventListener('click', function() {
+          localStorage.removeItem('loggedIn');
+          localStorage.removeItem('username');
+          mainApp.style.display = 'none';
+          showLoginScreen();
+        });
+      }
+      
+      // 初始化导航
+      function initNavigation() {
+        const navItems = document.querySelectorAll('.nav-item');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        navItems.forEach(item => {
+          item.addEventListener('click', function() {
+            const tabId = this.getAttribute('data-tab');
+            
+            navItems.forEach(navItem => navItem.classList.remove('active'));
+            this.classList.add('active');
+            
+            tabContents.forEach(content => content.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            
+            // 如果切换到桥梁模型标签，确保桥梁向量初始化
+            if (tabId === 'bridge-model') {
+              initBridgeModel();
+            }
+          });
+        });
+        
+        // 初始激活第一个标签
+        tabContents[0].classList.add('active');
+      }
+      
+      // 初始化图表
+      function initCharts() {
+        try {
+          // 安全检查
+          if (typeof Chart === 'undefined') {
+            console.error("Chart库未加载");
+            return;
+          }
+          
+          // 获取图表容器
+          const tempCtx = document.getElementById('temp-chart');
+          const vibrationCtx = document.getElementById('vibration-chart');
+          
+          if (!tempCtx || !vibrationCtx) {
+            console.error("找不到图表容器");
+            return;
+          }
+          
+          // 创建Canvas元素
+          const createCanvas = (container) => {
+            const canvas = document.createElement('canvas');
+            container.innerHTML = '';
+            container.appendChild(canvas);
+            return canvas.getContext('2d');
+          };
+          
+          // 创建温度图表
+          new Chart(createCanvas(tempCtx), {
+            type: 'line',
+            data: {
+              labels: systemData.tempData.map(d => d.rawTime),
+              datasets: [{
+                label: '平均温度 (°C)',
+                data: systemData.tempData.map(d => d.value),
+                borderColor: 'rgba(255, 99, 132, 1)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false
+            }
+          });
+          
+          // 创建振动图表
+          new Chart(createCanvas(vibrationCtx), {
+            type: 'line',
+            data: {
+              labels: systemData.vibrationData.map(d => d.rawTime),
+              datasets: [{
+                label: '振动强度 (Hz)',
+                data: systemData.vibrationData.map(d => d.value),
+                borderColor: 'rgba(54, 162, 235, 1)',
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false
+            }
+          });
+          
+          console.log("图表初始化完成");
+        } catch (error) {
+          console.error("初始化图表时出错:", error);
+        }
+      }
+      
+      // 初始化桥梁模型
+      function initBridgeModel() {
+        try {
+          if (typeof BridgeVector === 'undefined') {
+            console.error("桥梁向量模块未加载");
+            return;
+          }
+          
+          const container = document.getElementById('bridge-model-container');
+          if (!container) {
+            console.error("找不到桥梁模型容器");
+            return;
+          }
+          
+          // 清除加载中提示
+          const loadingElement = container.querySelector('.model-loading');
+          if (loadingElement) {
+            loadingElement.style.display = 'none';
+          }
+          
+          // 初始化向量图
+          BridgeVector.init({
+            container: 'bridge-model-container',
+            width: container.offsetWidth,
+            height: container.offsetHeight
+          });
+          
+          console.log("桥梁向量图初始化完成");
+        } catch (error) {
+          console.error("初始化桥梁向量图时出错:", error);
+        }
+      }
+      
+      // 开始加载系统
+      startLoading();
+    })();
+  </script>
+</body>
+</html> 

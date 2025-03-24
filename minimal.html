@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>黑龙江大桥监测系统 - 最简版</title>
+  <style>
+    body {
+      font-family: "Microsoft YaHei", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    
+    .header {
+      background-color: #007aff;
+      color: white;
+      padding: 15px 20px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .card {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .card-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      color: #007aff;
+    }
+    
+    .statistics {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    
+    .stat-box {
+      background-color: white;
+      border-radius: 8px;
+      padding: 15px;
+      width: calc(25% - 15px);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    
+    .status-normal { color: #4cd964; }
+    .status-warning { color: #ffcc00; }
+    .status-alert { color: #ff3b30; }
+    
+    .chart-placeholder {
+      height: 250px;
+      background-color: #eee;
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #999;
+      font-size: 14px;
+    }
+    
+    .footer {
+      text-align: center;
+      padding: 15px;
+      color: #666;
+      font-size: 12px;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    黑龙江大桥监测系统
+  </div>
+  
+  <div class="container">
+    <div class="statistics">
+      <div class="stat-box">
+        <div>传感器总数</div>
+        <div class="stat-value">86</div>
+      </div>
+      
+      <div class="stat-box">
+        <div>正常运行</div>
+        <div class="stat-value status-normal">82</div>
+      </div>
+      
+      <div class="stat-box">
+        <div>警告状态</div>
+        <div class="stat-value status-warning">4</div>
+      </div>
+      
+      <div class="stat-box">
+        <div>报警状态</div>
+        <div class="stat-value status-alert">0</div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-title">温度趋势</div>
+      <div class="chart-placeholder">温度数据图表将在此显示</div>
+    </div>
+    
+    <div class="card">
+      <div class="card-title">振动趋势</div>
+      <div class="chart-placeholder">振动数据图表将在此显示</div>
+    </div>
+    
+    <div class="card">
+      <div class="card-title">桥梁状态</div>
+      <div class="chart-placeholder">桥梁状态图将在此显示</div>
+    </div>
+    
+    <div class="footer">
+      黑龙江大桥监测系统 &copy; 2023
+    </div>
+  </div>
+  
+  <script>
+    // 简单的页面加载确认
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('黑龙江大桥监测系统页面已加载');
+    });
+  </script>
+</body>
+</html> 

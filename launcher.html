@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>黑龙江大桥监测系统启动器</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    
+    #loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #f8f9fa;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      transition: opacity 0.5s;
+    }
+    
+    .spinner {
+      width: 60px;
+      height: 60px;
+      border: 6px solid rgba(0, 122, 255, 0.2);
+      border-left-color: #007aff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    #appFrame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: none;
+    }
+  </style>
+  <script>
+    // 阻止Chrome错误的高级解决方案
+    (function() {
+      // 重新定义console方法
+      const originalConsole = {
+        log: console.log,
+        error: console.error,
+        warn: console.warn,
+        info: console.info
+      };
+      
+      // 创建过滤后的console方法
+      const chromeErrorPatterns = [
+        'runtime.lastError',
+        'message port closed',
+        'port closed',
+        'Receiving end does not exist',
+        'Could not establish connection',
+        'The message port closed',
+        'connection was not established'
+      ];
+      
+      // 过滤chrome错误的函数
+      function isChromeError(args) {
+        if (!args || args.length === 0) return false;
+        const text = String(args[0] || '');
+        return chromeErrorPatterns.some(pattern => text.includes(pattern));
+      }
+      
+      // 替换console方法
+      for (const method in originalConsole) {
+        console[method] = function() {
+          if (!isChromeError(arguments)) {
+            return originalConsole[method].apply(console, arguments);
+          }
+        };
+      }
+      
+      // 创建一个特殊处理的错误对象
+      function createSilentError(message) {
+        const error = Object.create(Error.prototype);
+        Object.defineProperties(error, {
+          message: { value: '', writable: false, configurable: false },
+          stack: { value: '', writable: false, configurable: false },
+          toString: { value: () => '', writable: false, configurable: false }
+        });
+        return error;
+      }
+      
+      // 重写Error构造函数
+      const OriginalError = window.Error;
+      window.Error = function(message) {
+        if (message && typeof message === 'string' && isChromeError([message])) {
+          return createSilentError(message);
+        }
+        return new OriginalError(message);
+      };
+      window.Error.prototype = OriginalError.prototype;
+      
+      // 劫持所有错误事件
+      window.addEventListener('error', function(event) {
+        const errorMsg = event.message || (event.error && event.error.message);
+        if (errorMsg && isChromeError([errorMsg])) {
+          event.preventDefault();
+          event.stopPropagation();
+          return true;
+        }
+      }, true);
+      
+      // 劫持未处理的Promise拒绝
+      window.addEventListener('unhandledrejection', function(event) {
+        const reason = event.reason && (event.reason.message || event.reason);
+        if (reason && isChromeError([reason])) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+      
+      // 创建安全的chrome对象
+      if (typeof chrome === 'undefined') {
+        window.chrome = {};
+      }
+      
+      // 定义安全的空函数
+      const safeNoop = () => Promise.resolve({});
+      
+      // 构建安全的chrome API结构
+      window.chrome.runtime = {
+        lastError: null,
+        sendMessage: safeNoop,
+        connect: () => ({
+          postMessage: safeNoop,
+          disconnect: safeNoop,
+          onMessage: { addListener: safeNoop, removeListener: safeNoop },
+          onDisconnect: { addListener: safeNoop, removeListener: safeNoop }
+        }),
+        onMessage: { addListener: safeNoop, removeListener: safeNoop },
+        getManifest: () => ({ manifest_version: 2 })
+      };
+      
+      // 防止修改chrome对象
+      try {
+        Object.freeze(window.chrome);
+        Object.freeze(window.chrome.runtime);
+      } catch (e) { /* 忽略错误 */ }
+      
+      // 拦截所有外部请求中的chrome-extension://
+      const originalOpen = XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open = function() {
+        try {
+          const url = arguments[1];
+          if (url && typeof url === 'string' && url.indexOf('chrome-extension://') >= 0) {
+            arguments[1] = 'about:blank';
+          }
+        } catch (e) { /* 忽略错误 */ }
+        return originalOpen.apply(this, arguments);
+      };
+      
+      // 确保iframe也受到保护
+      function protectIframe(frame) {
+        try {
+          const iframeWindow = frame.contentWindow;
+          if (iframeWindow) {
+            // 将安全chrome对象注入iframe
+            iframeWindow.chrome = window.chrome;
+            
+            // 递归保护子iframe
+            const childFrames = frame.contentDocument.querySelectorAll('iframe');
+            childFrames.forEach(protectIframe);
+          }
+        } catch (e) { /* 忽略跨域错误 */ }
+      }
+      
+      // 监视DOM变化，保护新添加的iframe
+      const observer = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+          if (mutation.addedNodes) {
+            mutation.addedNodes.forEach(node => {
+              if (node.tagName === 'IFRAME') {
+                protectIframe(node);
+              }
+            });
+          }
+        });
+      });
+      
+      // 开始观察文档
+      observer.observe(document, { 
+        childList: true, 
+        subtree: true 
+      });
+      
+      console.log('Chrome API错误保护已激活');
+    })();
+  </script>
+</head>
+<body>
+  <div id="loading">
+    <div class="spinner"></div>
+    <div>正在加载系统，请稍候...</div>
+  </div>
+  
+  <iframe id="appFrame" src="about:blank" title="黑龙江大桥监测系统"></iframe>
+  
+  <script>
+    // 页面加载完成后，再加载iframe
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        const iframe = document.getElementById('appFrame');
+        
+        // 在iframe加载完成后隐藏加载画面
+        iframe.onload = function() {
+          // 短暂延迟以确保iframe内容已渲染
+          setTimeout(function() {
+            iframe.style.display = 'block';
+            const loading = document.getElementById('loading');
+            loading.style.opacity = '0';
+            setTimeout(() => loading.style.display = 'none', 500);
+          }, 300);
+        };
+        
+        // 设置iframe源
+        iframe.src = 'index.html';
+      }, 500);
+    });
+  </script>
+</body>
+</html> 

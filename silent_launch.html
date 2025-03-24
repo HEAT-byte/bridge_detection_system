@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>黑龙江大桥监测系统</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      background-color: #f5f5f5;
+      font-family: "Microsoft YaHei", Arial, sans-serif;
+    }
+    
+    #loaderContainer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background-color: #fff;
+      z-index: 9999;
+    }
+    
+    .loader {
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #007aff;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    #loadingText {
+      font-size: 16px;
+      color: #333;
+    }
+    
+    #mainContent {
+      width: 100%;
+      height: 100%;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="loaderContainer">
+    <div class="loader"></div>
+    <div id="loadingText">正在加载黑龙江大桥监测系统...</div>
+  </div>
+  
+  <div id="mainContent"></div>
+  
+  <script>
+    // 阻止所有Chrome API错误
+    (function() {
+      // 实用工具函数
+      const silentLog = function() {}; 
+      const noop = function() { return Promise.resolve({}); };
+      const createSafeProxy = (obj) => new Proxy(obj || {}, {
+        get: (target, prop) => {
+          if (prop === 'then' || prop === 'catch') return undefined;
+          return typeof target[prop] === 'function' ? noop : createSafeProxy(target[prop]);
+        }
+      });
+      
+      // 替换控制台方法
+      const originalConsole = { log: console.log, error: console.error, warn: console.warn };
+      console.error = function() {
+        const msg = arguments[0] || '';
+        if (typeof msg === 'string' && 
+            (msg.includes('runtime.lastError') || 
+             msg.includes('message port') || 
+             msg.includes('Receiving end'))) {
+          return;
+        }
+        return originalConsole.error.apply(console, arguments);
+      };
+      
+      console.warn = function() {
+        const msg = arguments[0] || '';
+        if (typeof msg === 'string' && 
+            (msg.includes('runtime.lastError') || 
+             msg.includes('message port') || 
+             msg.includes('Receiving end'))) {
+          return;
+        }
+        return originalConsole.warn.apply(console, arguments);
+      };
+      
+      // 创建模拟的chrome对象
+      window.chrome = createSafeProxy({
+        runtime: {
+          lastError: null,
+          sendMessage: noop,
+          connect: () => ({
+            postMessage: noop,
+            disconnect: noop,
+            onDisconnect: { addListener: noop },
+            onMessage: { addListener: noop }
+          }),
+          onMessage: { addListener: noop }
+        }
+      });
+      
+      // 阻止错误事件传播
+      window.addEventListener('error', function(e) {
+        if (e && e.message && 
+            (e.message.includes('runtime.lastError') || 
+             e.message.includes('message port') || 
+             e.message.includes('Receiving end'))) {
+          e.preventDefault();
+          e.stopPropagation();
+          return true;
+        }
+      }, true);
+      
+      window.addEventListener('unhandledrejection', function(e) {
+        if (e && e.reason && 
+            ((e.reason.message && 
+              (e.reason.message.includes('runtime.lastError') || 
+              e.reason.message.includes('message port') || 
+              e.reason.message.includes('Receiving end'))) ||
+             (typeof e.reason === 'string' && 
+              (e.reason.includes('runtime.lastError') || 
+              e.reason.includes('message port') || 
+              e.reason.includes('Receiving end'))))) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }, true);
+    })();
+    
+    // 直接加载应用内容（不使用iframe）
+    document.addEventListener('DOMContentLoaded', function() {
+      const loadContent = () => {
+        // 显示加载文字信息
+        const updateLoadingText = (text) => {
+          document.getElementById('loadingText').textContent = text;
+        };
+        
+        updateLoadingText('正在准备系统环境...');
+        
+        // 加载HTML内容
+        fetch('index.html')
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`加载失败: ${response.status} ${response.statusText}`);
+            }
+            updateLoadingText('正在解析系统内容...');
+            return response.text();
+          })
+          .then(html => {
+            updateLoadingText('正在渲染界面...');
+            
+            // 提取<body>内容
+            const bodyContent = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+            
+            if (bodyContent && bodyContent[1]) {
+              // 提取<script>标签
+              const scripts = [];
+              let scriptContent = bodyContent[1].replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, (match, script) => {
+                scripts.push(script);
+                return '';
+              });
+              
+              // 提取<link>和<style>标签
+              const styleRegex = /<link[^>]*rel=["']stylesheet["'][^>]*>|<style[^>]*>([\s\S]*?)<\/style>/gi;
+              const styles = [];
+              let match;
+              
+              while (match = styleRegex.exec(html)) {
+                styles.push(match[0]);
+              }
+              
+              // 添加样式
+              if (styles.length > 0) {
+                const styleContainer = document.createElement('div');
+                styleContainer.innerHTML = styles.join('');
+                document.head.appendChild(styleContainer);
+              }
+              
+              // 设置主内容
+              const mainContent = document.getElementById('mainContent');
+              mainContent.innerHTML = scriptContent;
+              mainContent.style.display = 'block';
+              
+              // 依次执行脚本
+              setTimeout(() => {
+                scripts.forEach(script => {
+                  try {
+                    new Function(script)();
+                  } catch (e) {
+                    console.log('脚本执行错误，继续加载其他脚本');
+                  }
+                });
+                
+                // 完成加载
+                setTimeout(() => {
+                  document.getElementById('loaderContainer').style.display = 'none';
+                }, 500);
+              }, 100);
+            } else {
+              throw new Error('无法解析HTML内容');
+            }
+          })
+          .catch(error => {
+            console.error('载入失败:', error);
+            updateLoadingText('系统加载失败，请刷新页面重试：' + error.message);
+          });
+      };
+      
+      // 预加载资源
+      const preloadResources = () => {
+        const resources = ['chart.min.js', 'bridge-vector.js', 'js/utils.js', 'styles.css'];
+        
+        Promise.all(resources.map(url => {
+          return new Promise((resolve) => {
+            const link = document.createElement('link');
+            link.rel = 'preload';
+            link.href = url;
+            link.as = url.endsWith('.js') ? 'script' : (url.endsWith('.css') ? 'style' : 'fetch');
+            link.onload = () => resolve();
+            link.onerror = () => resolve(); // 忽略错误，继续加载
+            document.head.appendChild(link);
+          });
+        })).then(() => {
+          loadContent();
+        });
+      };
+      
+      // 开始预加载
+      preloadResources();
+    });
+  </script>
+</body>
+</html> 

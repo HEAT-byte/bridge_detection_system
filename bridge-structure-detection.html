@@ -1,0 +1,3784 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>黑龙江大桥监测系统</title>
+    <!-- 添加网页图标 -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌉</text></svg>">
+    <!-- 引入Chart.js库用于数据可视化 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 引入Material Icons库 -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body {
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f7f9fc;
+            color: #333;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c5282, #1a365d);
+            color: white;
+            padding: 20px 20px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        .header-subtitle {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 15px;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #2c5282;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .logout-btn {
+            background-color: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .logout-btn:hover {
+            background-color: rgba(255,255,255,0.3);
+        }
+        /* 登录模态框样式 */
+        .login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .login-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            width: 350px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .login-header h2 {
+            color: #007aff;
+            margin: 0;
+        }
+        .login-form .form-group {
+            margin-bottom: 20px;
+        }
+        .login-form label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        .login-form input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .login-form .login-button {
+            background-color: #007aff;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            width: 100%;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .login-form .login-button:hover {
+            background-color: #0056b3;
+        }
+        .error-message {
+            color: #dc3545;
+            margin-top: 10px;
+            text-align: center;
+        }
+        /* 桥梁示意图样式 */
+        .bridge-container {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            position: relative;
+            height: 300px;
+            overflow: hidden;
+        }
+        .bridge {
+            position: relative;
+            height: 100%;
+            width: 100%;
+        }
+        .bridge-deck {
+            position: absolute;
+            bottom: 120px;
+            left: 5%;
+            width: 90%;
+            height: 20px;
+            background-color: #6c757d;
+        }
+        .bridge-pier {
+            position: absolute;
+            bottom: 0;
+            width: 40px;
+            height: 120px;
+            background-color: #495057;
+        }
+        .bridge-pier:nth-child(1) {
+            left: 10%;
+        }
+        .bridge-pier:nth-child(2) {
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .bridge-pier:nth-child(3) {
+            right: 10%;
+        }
+        .sensor-point {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background-color: #28a745;
+            border: 2px solid white;
+            transform: translate(-50%, -50%);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .sensor-point:hover {
+            transform: translate(-50%, -50%) scale(1.2);
+            z-index: 10;
+        }
+        .sensor-point.warning {
+            background-color: #ffc107;
+        }
+        .sensor-point.danger {
+            background-color: #dc3545;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+        .sensor-tooltip {
+            position: absolute;
+            background-color: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            padding: 24px;
+            margin-bottom: 24px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 18px;
+            color: #2c5282;
+            border-bottom: 1px solid #edf2f7;
+            padding-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+        .card-title::before {
+            content: "";
+            display: inline-block;
+            width: 4px;
+            height: 18px;
+            background-color: #2c5282;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+        .example-file-link {
+            margin-top: 12px;
+            display: block;
+            font-size: 14px;
+            color: #2c5282;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background-color: #edf2f7;
+            transition: all 0.2s;
+            width: fit-content;
+        }
+        .example-file-link:hover {
+            background-color: #e2e8f0;
+            text-decoration: none;
+            transform: translateY(-2px);
+        }
+        .file-format-info {
+            background-color: #f8fafc;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 8px;
+            font-size: 13px;
+            border-left: 3px solid #2c5282;
+        }
+        .upload-area {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .file-input-container {
+            position: relative;
+            margin-right: 15px;
+            margin-bottom: 10px;
+        }
+        .custom-file-input {
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .custom-file-input:hover {
+            background-color: #e0e0e0;
+        }
+        #fileInput {
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        .button {
+            background-color: #2c5282;
+            color: white;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+        .button:hover {
+            background-color: #3182ce;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.12);
+        }
+        .button:active {
+            transform: translateY(0);
+        }
+        .button.secondary {
+            background-color: #718096;
+        }
+        .button.secondary:hover {
+            background-color: #4a5568;
+        }
+        .button.danger {
+            background-color: #e53e3e;
+        }
+        .button.danger:hover {
+            background-color: #c53030;
+        }
+        .button .material-icons {
+            font-size: 16px;
+            margin-right: 6px;
+        }
+        .button:disabled {
+            background-color: #cbd5e0;
+            color: #718096;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .data-table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #edf2f7;
+            padding: 10px 14px;
+            text-align: left;
+        }
+        .data-table th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        .data-table tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        .data-table tr:hover {
+            background-color: #ebf4ff;
+        }
+        .chart-container {
+            height: 400px;
+            margin-bottom: 20px;
+        }
+        .result-area {
+            margin-top: 20px;
+        }
+        .result-card {
+            margin-bottom: 20px;
+        }
+        .no-data-message, .no-analysis-message, .no-chart-data-message {
+            text-align: center;
+            padding: 30px;
+            color: #718096;
+        }
+        /* 添加历史记录相关样式 */
+        .history-container {
+            margin-top: 20px;
+        }
+        .history-item {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: white;
+            transition: all 0.3s ease;
+        }
+        .history-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .history-title {
+            font-weight: bold;
+            color: #2c5282;
+        }
+        .history-timestamp {
+            color: #718096;
+            font-size: 0.9em;
+        }
+        .history-expand-btn {
+            background-color: #e2e8f0;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .history-expand-btn:hover {
+            background-color: #cbd5e0;
+        }
+        .history-details {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e2e8f0;
+            display: none;
+        }
+        .history-details.expanded {
+            display: block;
+        }
+        .history-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .history-stat {
+            flex: 1;
+            min-width: 120px;
+            padding: 10px;
+            background-color: #f7fafc;
+            border-radius: 6px;
+        }
+        .history-stat-label {
+            font-size: 0.9em;
+            color: #4a5568;
+        }
+        .history-stat-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c5282;
+            margin-top: 5px;
+        }
+        .history-stat-value.warning {
+            color: #dd6b20;
+        }
+        .history-stat-value.danger {
+            color: #e53e3e;
+        }
+        .history-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        .history-action-btn {
+            padding: 5px 10px;
+            background-color: #edf2f7;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .history-action-btn:hover {
+            background-color: #e2e8f0;
+        }
+        .history-action-btn.danger {
+            color: #e53e3e;
+        }
+        .history-action-btn.danger:hover {
+            background-color: #fed7d7;
+        }
+        .history-view-btn {
+            color: #3182ce;
+        }
+        .history-view-btn:hover {
+            background-color: #ebf8ff;
+        }
+        /* 异常值图表样式 */
+        .anomaly-chart-container {
+            height: 400px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        .no-anomalies-message {
+            text-align: center;
+            padding: 30px;
+            color: #718096;
+        }
+        .anomaly-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .anomaly-item {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .anomaly-item.severe {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: white;
+            margin-right: 5px;
+        }
+        .status-normal {
+            background-color: #28a745;
+        }
+        .status-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .status-danger {
+            background-color: #dc3545;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 24px;
+            background-color: white;
+            border-radius: 8px 8px 0 0;
+            padding: 0 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .tab {
+            padding: 16px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+            color: #4a5568;
+            transition: all 0.2s;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .tab:hover {
+            color: #2c5282;
+        }
+        .tab.active {
+            border-bottom-color: #2c5282;
+            color: #2c5282;
+            font-weight: 600;
+        }
+        .tab.active::after {
+            content: "";
+            position: absolute;
+            bottom: -3px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 6px;
+            height: 6px;
+            background-color: #2c5282;
+            border-radius: 50%;
+        }
+        .tab-content {
+            display: none;
+            background-color: white;
+            border-radius: 0 0 8px 8px;
+            padding: 15px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #007aff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .analysis-summary {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .info-text {
+            color: #6c757d;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .anomaly-count {
+            font-size: 24px;
+            font-weight: bold;
+            color: #dc3545;
+            margin-right: 5px;
+        }
+        .no-data-message {
+            text-align: center;
+            padding: 30px;
+            color: #6c757d;
+        }
+        .camera-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .camera-item {
+            width: calc(25% - 15px);
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 15px;
+            margin-bottom: 5px;
+            position: relative;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .camera-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .camera-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .camera-name {
+            font-size: 14px;
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .camera-status {
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        .sensor-id {
+            background-color: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-top: 4px;
+            display: inline-block;
+        }
+        .online {
+            background-color: #28a745;
+            color: white;
+        }
+        .offline {
+            background-color: #dc3545;
+            color: white;
+        }
+        .warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .camera-view {
+            position: relative;
+            height: 160px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+        }
+        .camera-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+        }
+        .camera-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+            color: #6c757d;
+        }
+        .camera-message {
+            font-size: 12px;
+            text-align: center;
+            padding: 0 10px;
+        }
+        .camera-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .camera-view:hover .camera-overlay {
+            opacity: 1;
+        }
+        .camera-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+        .camera-control-btn {
+            background-color: rgba(255,255,255,0.8);
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            margin: 0 2px;
+            font-size: 12px;
+        }
+        .camera-control-btn:hover {
+            background-color: rgba(255,255,255,1);
+        }
+        .camera-info {
+            margin-top: 20px;
+            padding: 10px 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .camera-alert {
+            color: #007aff;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .location-tag {
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 4px;
+            margin-bottom: 5px;
+            display: block;
+        }
+        /* 列表视图样式 */
+        .camera-list {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .camera-list-item {
+            display: flex;
+            align-items: center;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 10px 15px;
+        }
+        .camera-list-icon {
+            width: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 15px;
+            font-size: 24px;
+        }
+        .camera-list-info {
+            flex-grow: 1;
+        }
+        .camera-list-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .event-status-display {
+            padding: 10px 0;
+        }
+        .event-status-header {
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            color: #2c5282;
+            margin-bottom: 10px;
+        }
+        .event-details {
+            background-color: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #2c5282;
+            transition: all 0.3s ease;
+        }
+        #currentEventName {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        #currentEventDescription {
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+        .event-progress-container {
+            margin-top: 10px;
+        }
+        .event-progress-bar {
+            height: 8px;
+            background-color: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+        .event-progress {
+            height: 100%;
+            background-color: #2c5282;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        .event-progress-text {
+            text-align: right;
+            font-size: 12px;
+            color: #718096;
+        }
+        .event-alert {
+            background-color: #fed7d7;
+            border-left: 3px solid #e53e3e;
+        }
+        .event-alert #currentEventName {
+            color: #c53030;
+        }
+        .event-alert .event-progress {
+            background-color: #e53e3e;
+        }
+        .event-warning {
+            background-color: #feebc8;
+            border-left: 3px solid #dd6b20;
+        }
+        .event-warning #currentEventName {
+            color: #c05621;
+        }
+        .event-warning .event-progress {
+            background-color: #dd6b20;
+        }
+        .event-controls {
+            margin: 15px 0;
+            padding: 15px;
+            background-color: #f8fafc;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .event-controls h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #2d3748;
+            font-size: 16px;
+        }
+        .event-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .event-buttons button {
+            padding: 6px 12px;
+            background-color: #edf2f7;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .event-buttons button:hover {
+            background-color: #e2e8f0;
+        }
+        .event-buttons button.active {
+            background-color: #4299e1;
+            color: white;
+            border-color: #3182ce;
+        }
+        .chart-control-btn {
+            transition: all 0.2s ease;
+        }
+        .chart-control-btn:hover {
+            opacity: 0.9;
+        }
+        .chart-control-btn.active {
+            background-color: #4299e1 !important;
+            color: white !important;
+            border-color: #3182ce !important;
+        }
+        
+        /* 添加更紧凑的异常结果显示样式 */
+        .analysis-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 15px;
+        }
+        
+        .analysis-summary {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .anomaly-chart-section {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        
+        .anomaly-chart-container {
+            height: 350px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background-color: #fff;
+            padding: 10px;
+        }
+        
+        .analysis-results-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .analysis-col {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .anomaly-list-container {
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 5px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background-color: #fff;
+        }
+        
+        .anomaly-filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            background-color: #f8fafc;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .filter-label {
+            font-size: 14px;
+            color: #4a5568;
+            white-space: nowrap;
+        }
+        
+        .anomaly-item {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            transition: transform 0.2s;
+        }
+        
+        .anomaly-item:hover {
+            transform: translateX(5px);
+        }
+        
+        .anomaly-item.severe {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        
+        .anomaly-sensor-header {
+            background-color: #edf2f7;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+        
+        .anomaly-sensor-header h5 {
+            margin: 0;
+            color: #2d3748;
+            font-size: 15px;
+        }
+        
+        .anomaly-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            font-size: 14px;
+        }
+        
+        .anomaly-time {
+            font-weight: 500;
+            flex-basis: 100%;
+        }
+        
+        .anomaly-value, .anomaly-score, .anomaly-type {
+            flex: 1;
+            min-width: 80px;
+        }
+        
+        .anomaly-type {
+            color: #2c5282;
+            font-weight: 500;
+        }
+        
+        .history-section {
+            margin-top: 20px;
+        }
+        
+        .history-header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            background-color: #f8fafc;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .history-title {
+            font-weight: 600;
+            color: #2d3748;
+            margin: 0;
+        }
+        
+        .history-actions button {
+            background-color: #edf2f7;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .history-actions button:hover {
+            background-color: #e2e8f0;
+        }
+        
+        .alert-compact {
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+        
+        .alert-info.alert-compact {
+            background-color: #ebf8ff;
+            border-left: 4px solid #3182ce;
+            color: #2c5282;
+        }
+        
+        .alert-warning.alert-compact {
+            background-color: #fffaf0;
+            border-left: 4px solid #dd6b20;
+            color: #c05621;
+        }
+        
+        .tab-content {
+            padding: 15px;
+        }
+        
+        /* 传感器类型标记样式 */
+        .sensor-type-tag {
+            display: inline-block;
+            font-size: 11px;
+            padding: 2px 5px;
+            border-radius: 3px;
+            color: white;
+            margin-top: 3px;
+            font-weight: bold;
+        }
+        
+        .type-温度 .sensor-type-tag {
+            background-color: #e53e3e;
+        }
+        
+        .type-应变 .sensor-type-tag {
+            background-color: #3182ce;
+        }
+        
+        .type-振动 .sensor-type-tag {
+            background-color: #805ad5;
+        }
+        
+        .type-倾角 .sensor-type-tag {
+            background-color: #dd6b20;
+        }
+        
+        /* 传感器ID检索样式 */
+        #sensor-search {
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 250px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        #sensor-search:focus {
+            border-color: #4299e1;
+            box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
+        }
+        
+        #search-sensor-btn {
+            margin-left: 8px;
+            padding: 8px 12px;
+            vertical-align: middle;
+            display: inline-flex;
+            align-items: center;
+            background-color: #4299e1;
+            color: white;
+            border: none;
+        }
+        
+        #search-sensor-btn:hover {
+            background-color: #3182ce;
+        }
+        
+        #search-sensor-btn .material-icons {
+            font-size: 16px;
+            margin-right: 4px;
+        }
+        
+        .monitor-filter {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        #camera-filter {
+            margin-left: 15px;
+        }
+        
+        #search-result-message {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>黑龙江大桥监测系统</h1>
+        <div class="header-subtitle">桥梁结构异常检测系统</div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-title">数据上传与分析</div>
+            <div class="upload-area">
+                <div class="file-input-container">
+                    <div class="custom-file-input">
+                        <span class="material-icons">cloud_upload</span>
+                        选择文件
+                    </div>
+                    <input type="file" id="fileInput" accept=".txt,.csv">
+                </div>
+                <button class="button" id="uploadButton">
+                    <span class="material-icons">publish</span>
+                    上传数据
+                </button>
+                <button class="button secondary" id="resetButton">
+                    <span class="material-icons">restart_alt</span>
+                    重置
+                </button>
+                <button class="button" id="detectButton" disabled>
+                    <span class="material-icons">search</span>
+                    开始检测
+                </button>
+                <button class="button secondary" id="sampleButton">
+                    <span class="material-icons">data_object</span>
+                    生成示例数据
+                </button>
+                <button class="button secondary" id="refreshButton">
+                    <span class="material-icons">autorenew</span>
+                    随机刷新数据
+                </button>
+            </div>
+            <div class="info-text" id="fileInfo">未选择文件</div>
+            <a href="#" id="downloadExample" class="example-file-link">
+                <span class="material-icons" style="font-size:16px;vertical-align:middle;">file_download</span> 
+                下载数据格式示例文件
+            </a>
+            <div class="file-format-info">
+                <strong>支持的文件格式:</strong>
+                <ul style="margin-top: 5px; margin-bottom: 5px;">
+                    <li>CSV格式: 时间戳,传感器ID,数值 (每行一条记录)</li>
+                    <li>TXT格式: 时间戳,数值 (每行一条记录，自动分配传感器ID)</li>
+                </ul>
+                <div>示例: 2023-06-15 14:30,传感器A,23.45</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" data-tab="data">
+                <span class="material-icons" style="margin-right:8px;">table_chart</span>
+                数据查看
+            </div>
+            <div class="tab" data-tab="visualization">
+                <span class="material-icons" style="margin-right:8px;">bar_chart</span>
+                数据可视化
+            </div>
+            <div class="tab" data-tab="analysis">
+                <span class="material-icons" style="margin-right:8px;">analytics</span>
+                异常检测结果
+            </div>
+            <div class="tab" data-tab="monitor">
+                <span class="material-icons" style="margin-right:8px;">videocam</span>
+                异常监控
+            </div>
+        </div>
+
+        <div class="tab-content active" id="data-tab">
+            <div class="card">
+                <div class="card-title">传感器数据</div>
+                <div class="data-table-container">
+                    <table class="data-table" id="dataTable">
+                        <thead>
+                            <tr>
+                                <th>时间戳</th>
+                                <th>传感器ID</th>
+                                <th>数值</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- 数据行将动态插入 -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="no-data-message" id="noDataMessage">
+                    请上传数据文件开始分析
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="visualization-tab">
+            <div class="card">
+                <div class="card-title">传感器数据可视化</div>
+                <div class="chart-container">
+                    <canvas id="dataChart"></canvas>
+                </div>
+                <div class="no-data-message" id="noChartDataMessage">
+                    请上传数据文件查看可视化图表
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="analysis-tab">
+            <div class="card">
+                <div class="card-title">异常检测分析</div>
+                <div id="no-analysis-message" class="no-analysis-message">
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px;">
+                        <span class="material-icons" style="font-size: 48px; color: #cbd5e0; margin-bottom: 15px;">search</span>
+                        <p>等待异常检测</p>
+                        <p style="font-size: 14px; color: #718096;">请上传传感器数据并点击"开始检测"按钮</p>
+                    </div>
+                </div>
+                <div id="analysis-loader" style="display: none; text-align: center; padding: 30px;">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 15px;">正在进行异常检测，请稍候...</p>
+                </div>
+                
+                <div id="analysis-content" style="display: none;">
+                    <div id="analysis-summary"></div>
+                    
+                    <div class="analysis-container">
+                        <div id="anomaly-chart-section" class="anomaly-chart-section" style="display: none;">
+                            <div class="section-title">异常点分布图表</div>
+                            <div class="anomaly-chart-container" id="anomaly-chart-container"></div>
+                        </div>
+                        
+                        <div class="analysis-results-container">
+                            <div class="analysis-col">
+                                <div class="section-title">异常点列表</div>
+                                <div class="anomaly-filter-bar">
+                                    <div class="filter-group">
+                                        <span class="filter-label">异常类型:</span>
+                                        <select id="anomaly-type-filter" class="form-select form-select-sm">
+                                            <option value="all">全部</option>
+                                            <option value="单点异常">单点异常</option>
+                                            <option value="连续性异常">连续性异常</option>
+                                            <option value="群体异常">群体异常</option>
+                                        </select>
+                                    </div>
+                                    <button onclick="startAnomalyDetection()" class="button" style="margin-left: auto; padding: 5px 10px; font-size: 14px;">
+                                        <span class="material-icons" style="font-size: 16px;">refresh</span> 重新检测
+                                    </button>
+                                </div>
+                                <div class="anomaly-list-container">
+                                    <div id="anomaly-list" class="anomaly-list"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="history-section">
+                        <div class="history-header-bar">
+                            <h3 class="history-title">历史记录</h3>
+                            <div class="history-actions">
+                                <button onclick="clearAllHistory()" class="button danger" style="padding: 5px 10px; font-size: 14px;">
+                                    <span class="material-icons" style="font-size: 16px;">delete</span> 清空历史
+                                </button>
+                            </div>
+                        </div>
+                        <div id="history-list" class="history-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="monitor-tab">
+            <div class="card">
+                <div class="card-title">异常位置摄像头监控</div>
+                <div class="monitor-controls">
+                    <div class="monitor-filter">
+                        <input type="text" id="sensor-search" placeholder="输入传感器ID进行检索..." aria-label="传感器ID检索">
+                        <button class="button secondary" id="search-sensor-btn">
+                            <span class="material-icons">search</span>
+                            检索
+                        </button>
+                        <select id="camera-filter" aria-label="摄像头筛选">
+                            <option value="all">所有摄像头</option>
+                            <option value="online">仅在线</option>
+                            <option value="offline">仅离线</option>
+                            <option value="warning">仅异常</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="camera-grid" id="camera-container">
+                    <!-- 摄像头将通过 JavaScript 动态生成 -->
+                </div>
+                <div class="camera-info">
+                    <div class="info-text">点击摄像头图标<span class="material-icons" style="font-size:14px;vertical-align:middle;">videocam</span>可查看实时画面</div>
+                    <div class="camera-alert" id="cameraAlert">
+                        <strong>系统状态:</strong> <span id="system-status">监控系统运行正常</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加异常值图表区域 -->
+        <div id="anomaly-chart-section" style="display: none;">
+            <div class="card">
+                <div class="card-title">
+                    <span class="material-icons" style="margin-right: 8px;">timeline</span>
+                    异常值图表
+                </div>
+                <div id="anomaly-chart-container" class="anomaly-chart-container">
+                    <div class="no-anomalies-message">
+                        异常检测完成后将在此处显示图表
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加历史记录区域 -->
+        <div id="history-section" class="history-container">
+            <div class="card">
+                <div class="card-title">
+                    <span class="material-icons" style="margin-right: 8px;">history</span>
+                    历史记录
+                </div>
+                <div id="history-list">
+                    <div class="no-data-message">
+                        尚无处理记录
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加桥梁监控无数据消息 -->
+        <div class="no-data-message" id="noMonitorMessage" style="display: none;">
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px;">
+                <span class="material-icons" style="font-size: 48px; color: #cbd5e0; margin-bottom: 15px;">sensors</span>
+                <p>尚无监控数据</p>
+                <p style="font-size: 14px; color: #718096;">请上传传感器数据或生成示例数据</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let sensorData = [];
+        let anomalies = [];
+        let dataChart = null;
+        let anomalyChart = null;
+        let detectionHistory = []; // 添加历史记录数组
+        let isLoggedIn = true; // 默认为已登录状态
+        let currentUser = { username: "系统用户" }; // 默认用户信息
+
+        // DOM元素
+        const fileInput = document.getElementById('fileInput') || { addEventListener: () => {} };
+        const fileInfo = document.getElementById('fileInfo') || { textContent: '' };
+        const uploadButton = document.getElementById('uploadButton') || { disabled: true };
+        const resetButton = document.getElementById('resetButton') || { addEventListener: () => {} };
+        const detectButton = document.getElementById('detectButton') || { disabled: true };
+        const dataTable = document.getElementById('dataTable') || { getElementsByTagName: () => [{ innerHTML: '' }] };
+        const noDataMessage = document.getElementById('noDataMessage') || { style: { display: 'none' } };
+        const noChartDataMessage = document.getElementById('noChartDataMessage') || { style: { display: 'none' } };
+        const noAnalysisMessage = document.getElementById('noAnalysisMessage') || { style: { display: 'none' } };
+        const analysisLoader = document.getElementById('analysisLoader') || { style: { display: 'none' } };
+        const analysisSummary = document.getElementById('analysisSummary') || { style: { display: 'none' } };
+        const anomalyList = document.getElementById('anomalyList') || { innerHTML: '' };
+        const noMonitorMessage = document.getElementById('noMonitorMessage') || { style: { display: 'none' } };
+        const sampleDataButton = document.getElementById('sample-data-button') || document.getElementById('sampleButton') || { addEventListener: () => {} };
+        const cameraContainer = document.getElementById('camera-container') || { innerHTML: '' };
+        
+        // 创建一个全局的数据变量（如果尚未定义）
+        window.sensorData = window.sensorData || [];
+        window.dataChart = window.dataChart || null;
+        window.dataUpdateInterval = window.dataUpdateInterval || null;
+        
+        // 初始化系统
+        function initSystem() {
+            try {
+                // 初始化必要组件
+                initEventListeners();
+                
+                // 创建样本数据按钮事件监听
+                const sampleBtn = document.getElementById('sample-data-button') || document.getElementById('sampleButton');
+                if (sampleBtn) {
+                    sampleBtn.addEventListener('click', function() {
+                        createSampleData();
+                        // 确保检测按钮启用
+                        if (detectButton) detectButton.disabled = false;
+                    });
+                } else {
+                    console.warn("未找到示例数据按钮");
+                }
+                
+                // 随机刷新数据按钮事件监听
+                const refreshBtn = document.getElementById('refreshButton');
+                if (refreshBtn) {
+                    refreshBtn.addEventListener('click', function() {
+                        if (typeof refreshData === 'function') {
+                            refreshData();
+                        } else {
+                            console.warn("刷新数据函数未定义");
+                        }
+                    });
+                }
+                
+                // 传感器ID检索功能
+                const sensorSearchBtn = document.getElementById('search-sensor-btn');
+                const sensorSearchInput = document.getElementById('sensor-search');
+                
+                if (sensorSearchBtn && sensorSearchInput) {
+                    sensorSearchBtn.addEventListener('click', function() {
+                        const searchTerm = sensorSearchInput.value.trim();
+                        searchSensorById(searchTerm);
+                    });
+                    
+                    // 支持回车键搜索
+                    sensorSearchInput.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') {
+                            const searchTerm = sensorSearchInput.value.trim();
+                            searchSensorById(searchTerm);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error("初始化系统时出错:", error);
+            }
+        }
+        
+        // 刷新数据的包装函数
+        function refreshData() {
+            if (window.dataUpdateInterval) {
+                stopDataUpdates();
+            } else {
+                startRandomDataUpdates();
+            }
+        }
+        
+        // 根据传感器ID搜索相关摄像头
+        function searchSensorById(sensorId) {
+            console.log(`搜索传感器ID: ${sensorId}`);
+            if (!sensorId) {
+                // 如果搜索词为空，恢复显示所有摄像头
+                initCameraMonitor();
+                return;
+            }
+            
+            // 在实际系统中，这里会根据传感器ID过滤相关的摄像头
+            // 这里只做演示，假设传感器ID与摄像头区域有以下映射关系
+            let matchedCameras = [];
+            
+            // 如果包含位置关键词，则匹配相应区域摄像头
+            if (sensorId.includes('北段')) {
+                matchedCameras = [1, 2, 3]; // 北段摄像头编号
+            } else if (sensorId.includes('中段')) {
+                matchedCameras = [4, 5, 6]; // 中段摄像头编号
+            } else if (sensorId.includes('南段')) {
+                matchedCameras = [7, 8, 9]; // 南段摄像头编号
+            } else {
+                // 如果没有匹配的位置，尝试直接匹配传感器类型
+                if (sensorId.includes('温度')) {
+                    matchedCameras = [1, 4, 7]; // 温度传感器相关摄像头
+                } else if (sensorId.includes('应变')) {
+                    matchedCameras = [2, 5, 8]; // 应变传感器相关摄像头
+                } else if (sensorId.includes('振动')) {
+                    matchedCameras = [3, 6, 9]; // 振动传感器相关摄像头
+                } else if (sensorId.includes('倾角')) {
+                    matchedCameras = [1, 5, 9]; // 倾角传感器相关摄像头
+                }
+            }
+            
+            // 过滤相机显示
+            const allCameras = document.querySelectorAll('.camera-item');
+            let foundMatches = false;
+            
+            allCameras.forEach(camera => {
+                const cameraId = parseInt(camera.dataset.cameraId);
+                if (matchedCameras.includes(cameraId)) {
+                    camera.style.display = 'block';
+                    foundMatches = true;
+                } else {
+                    camera.style.display = 'none';
+                }
+            });
+            
+            // 显示搜索结果信息
+            const container = document.getElementById('camera-container');
+            
+            // 先移除之前的提示消息（如果有）
+            const prevMessage = document.getElementById('search-result-message');
+            if (prevMessage) {
+                prevMessage.remove();
+            }
+            
+            // 添加搜索结果提示
+            const resultMessage = document.createElement('div');
+            resultMessage.id = 'search-result-message';
+            resultMessage.style.padding = '15px';
+            resultMessage.style.margin = '10px 0';
+            resultMessage.style.backgroundColor = '#f8f9fa';
+            resultMessage.style.borderRadius = '4px';
+            resultMessage.style.border = '1px solid #e9ecef';
+            
+            if (foundMatches) {
+                resultMessage.innerHTML = `<strong>搜索结果:</strong> 找到 ${matchedCameras.length} 个与传感器 "${sensorId}" 相关的监控位置`;
+            } else {
+                resultMessage.innerHTML = `<strong>搜索结果:</strong> 未找到与传感器 "${sensorId}" 相关的监控位置`;
+            }
+            
+            // 插入到容器的最前面
+            if (container.firstChild) {
+                container.insertBefore(resultMessage, container.firstChild);
+            } else {
+                container.appendChild(resultMessage);
+            }
+        }
+
+        // 初始化事件监听
+        function initEventListeners() {
+            try {
+                // 文件上传事件
+                if (fileInput) {
+                    fileInput.addEventListener('change', function() {
+                        if (this.files.length > 0) {
+                            const file = this.files[0];
+                            if (fileInfo) fileInfo.textContent = `已选择文件: ${file.name} (${formatFileSize(file.size)})`;
+                            if (uploadButton) uploadButton.disabled = false;
+                        } else {
+                            if (fileInfo) fileInfo.textContent = '未选择文件';
+                            if (uploadButton) uploadButton.disabled = true;
+                        }
+                    });
+                }
+
+                // 上传按钮事件
+                if (uploadButton) {
+                    uploadButton.addEventListener('click', function() {
+                        if (!fileInput) return;
+                        const file = fileInput.files[0];
+                        if (file) {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                try {
+                                    const content = e.target.result;
+                                    processData(content);
+                                    
+                                    // 确保数据处理后启用检测按钮
+                                    if (window.sensorData.length > 0) {
+                                        console.log("成功加载数据点：", window.sensorData.length);
+                                        if (detectButton) detectButton.disabled = false;
+                                    } else {
+                                        console.warn("数据处理完成，但没有有效数据点");
+                                        alert('未能从文件中提取有效数据，请检查文件格式');
+                                        if (detectButton) detectButton.disabled = true;
+                                    }
+                                } catch (error) {
+                                    console.error('数据解析错误:', error);
+                                    alert('数据解析错误: ' + error.message);
+                                }
+                            };
+                            reader.onerror = function(e) {
+                                console.error('文件读取错误:', e);
+                                alert('文件读取错误!');
+                            };
+                            reader.readAsText(file);
+                        } else {
+                            alert('请先选择一个文件!');
+                        }
+                    });
+                }
+
+                // 检测按钮事件
+                if (detectButton) {
+                    detectButton.addEventListener('click', function() {
+                        console.log("点击检测按钮，当前数据点数量:", window.sensorData.length);
+                        if (window.sensorData && window.sensorData.length > 0) {
+                            console.log("开始异常检测...");
+                            startAnomalyDetection();
+                        } else {
+                            console.warn("没有数据可供检测");
+                            alert('请先上传数据!');
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('初始化事件监听器时出错:', error);
+            }
+        }
+
+        // 页面加载完成后执行初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                // 初始化系统
+                initSystem();
+                
+                // 确保重置按钮可用
+                if (resetButton) {
+                    resetButton.addEventListener('click', resetAll);
+                } else {
+                    console.warn('未找到重置按钮');
+                }
+            } catch (error) {
+                console.error('初始化过程中出错:', error);
+            }
+        });
+
+        // 初始化桥梁监控图
+        function initBridgeMonitor() {
+            const bridge = document.querySelector('.bridge');
+            const noMonitorMessage = document.getElementById('noMonitorMessage');
+            
+            if (!sensorData || sensorData.length === 0) {
+                if (noMonitorMessage) noMonitorMessage.style.display = 'block';
+                return;
+            }
+            
+            if (noMonitorMessage) noMonitorMessage.style.display = 'none';
+            
+            // 清除现有传感器点
+            document.querySelectorAll('.sensor-point').forEach(point => point.remove());
+            
+            // 创建传感器点
+            const uniqueSensors = [...new Set(sensorData.map(item => item.sensorId))];
+            
+            uniqueSensors.forEach((sensorId, index) => {
+                // 获取该传感器的所有数据点
+                const sensorPoints = sensorData.filter(item => item.sensorId === sensorId);
+                
+                // 判断传感器状态
+                let status = 'normal';
+                for (const point of sensorPoints) {
+                    if (point.status === 'danger') {
+                        status = 'danger';
+                        break;
+                    } else if (point.status === 'warning') {
+                        status = 'warning';
+                    }
+                }
+                
+                // 计算位置（均匀分布在桥面上）
+                const xPos = 10 + (80 * index / (uniqueSensors.length > 1 ? uniqueSensors.length - 1 : 1)) + '%';
+                const yPos = '120px'; // 放在桥面上
+                
+                // 创建传感器点元素
+                const sensorPoint = document.createElement('div');
+                sensorPoint.className = `sensor-point ${status}`;
+                sensorPoint.style.left = xPos;
+                sensorPoint.style.top = yPos;
+                sensorPoint.dataset.sensorId = sensorId;
+                sensorPoint.dataset.status = status;
+                
+                // 添加悬停事件显示工具提示
+                sensorPoint.addEventListener('mouseover', function(e) {
+                    const rect = this.getBoundingClientRect();
+                    
+                    // 统计异常数量
+                    const abnormalCount = sensorPoints.filter(p => p.status === 'danger').length;
+                    
+                    sensorTooltip.innerHTML = `
+                        <strong>传感器:</strong> ${sensorId}<br>
+                        <strong>状态:</strong> ${getStatusText(status)}<br>
+                        <strong>异常点数:</strong> ${abnormalCount}
+                    `;
+                    
+                    sensorTooltip.style.top = `${rect.top - 70}px`;
+                    sensorTooltip.style.left = `${rect.left}px`;
+                    sensorTooltip.style.opacity = '1';
+                });
+                
+                sensorPoint.addEventListener('mouseout', function() {
+                    sensorTooltip.style.opacity = '0';
+                });
+                
+                // 点击跳转到对应传感器的分析结果
+                sensorPoint.addEventListener('click', function() {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelector('.tab[data-tab="analysis"]').classList.add('active');
+                    
+                    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                    document.getElementById('analysis-tab').classList.add('active');
+                    
+                    // 滚动到异常列表位置
+                    document.querySelector('.result-area').scrollIntoView({ behavior: 'smooth' });
+                    
+                    // 高亮显示对应传感器的异常
+                    document.querySelectorAll('.anomaly-item').forEach(item => {
+                        if (item.textContent.includes(sensorId)) {
+                            item.style.backgroundColor = '#fff3cd';
+                            setTimeout(() => {
+                                item.style.backgroundColor = '';
+                            }, 2000);
+                        }
+                    });
+                });
+                
+                bridge.appendChild(sensorPoint);
+            });
+        }
+
+        function getStatusText(status) {
+            switch(status) {
+                case 'normal':
+                    return '正常';
+                case 'warning':
+                    return '警告';
+                case 'danger':
+                    return '异常';
+                default:
+                    return '未知';
+            }
+        }
+
+        // 初始化摄像头监控系统
+        function initCameraMonitor() {
+            try {
+                console.log("初始化摄像头监控系统");
+                
+                // 查找摄像头容器
+                const cameraContainerElement = document.getElementById('camera-container');
+                if (!cameraContainerElement) {
+                    console.error("未找到摄像头容器元素");
+                    return;
+                }
+                
+                // 清空摄像头容器
+                cameraContainerElement.innerHTML = '';
+                
+                // 定义摄像头位置和对应的传感器
+                const cameraLocations = [
+                    { id: 1, name: "桥梁北端-左侧", status: "online", sensorId: "TL-101" },
+                    { id: 2, name: "桥梁北端-右侧", status: "online", sensorId: "TR-102" },
+                    { id: 3, name: "桥梁主跨-A1", status: "online", sensorId: "MA-201" },
+                    { id: 4, name: "桥梁主跨-A2", status: "online", sensorId: "MA-202" },
+                    { id: 5, name: "桥梁主跨-B1", status: "warning", sensorId: "MB-203" },
+                    { id: 6, name: "桥梁主跨-B2", status: "online", sensorId: "MB-204" },
+                    { id: 7, name: "桥梁主跨-C1", status: "offline", sensorId: "MC-205" },
+                    { id: 8, name: "桥梁主跨-C2", status: "online", sensorId: "MC-206" },
+                    { id: 9, name: "桥梁南端-左侧", status: "online", sensorId: "BL-301" },
+                    { id: 10, name: "桥梁南端-右侧", status: "warning", sensorId: "BR-302" },
+                ];
+                
+                // 创建摄像头视图
+                cameraLocations.forEach(camera => {
+                    const cameraItem = document.createElement('div');
+                    cameraItem.className = 'camera-item';
+                    cameraItem.dataset.cameraId = camera.id;
+                    
+                    const cameraView = document.createElement('div');
+                    cameraView.className = 'camera-view';
+                    
+                    // 根据状态设置样式
+                    if (camera.status === 'offline') {
+                        cameraView.classList.add('offline');
+                    } else if (camera.status === 'warning') {
+                        cameraView.classList.add('warning');
+                    }
+                    
+                    // 添加摄像头占位符
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'camera-placeholder';
+                    
+                    // 摄像头图标
+                    const icon = document.createElement('div');
+                    icon.className = 'camera-icon';
+                    icon.innerHTML = camera.status !== 'offline' ? '<i class="fas fa-video"></i>' : '<i class="fas fa-video-slash"></i>';
+                    placeholder.appendChild(icon);
+                    
+                    // 摄像头信息
+                    const info = document.createElement('div');
+                    info.className = 'camera-message';
+                    info.textContent = camera.name + (camera.status === 'offline' ? ' (离线)' : '');
+                    placeholder.appendChild(info);
+                    
+                    cameraView.appendChild(placeholder);
+                    
+                    // 添加摄像头覆盖层
+                    const overlay = document.createElement('div');
+                    overlay.className = 'camera-overlay';
+                    
+                    const controlBtn = document.createElement('button');
+                    controlBtn.className = 'btn btn-sm btn-light';
+                    controlBtn.innerHTML = '<i class="fas fa-expand"></i>';
+                    controlBtn.addEventListener('click', function() {
+                        showCameraFeedback(camera.id, `正在连接 ${camera.name} 摄像头...`);
+                    });
+                    
+                    overlay.appendChild(controlBtn);
+                    cameraView.appendChild(overlay);
+                    
+                    cameraItem.appendChild(cameraView);
+                    
+                    // 摄像头控制
+                    const controls = document.createElement('div');
+                    controls.className = 'camera-controls';
+                    
+                    const viewBtn = document.createElement('button');
+                    viewBtn.className = 'camera-control-btn';
+                    viewBtn.innerHTML = '<i class="fas fa-eye"></i>';
+                    viewBtn.addEventListener('click', function() {
+                        showCameraFeedback(camera.id, '查看直播流');
+                    });
+                    controls.appendChild(viewBtn);
+                    
+                    const recordBtn = document.createElement('button');
+                    recordBtn.className = 'camera-control-btn';
+                    recordBtn.innerHTML = '<i class="fas fa-circle"></i>';
+                    recordBtn.addEventListener('click', function() {
+                        showCameraFeedback(camera.id, '录制已开始');
+                    });
+                    controls.appendChild(recordBtn);
+                    
+                    const snapshotBtn = document.createElement('button');
+                    snapshotBtn.className = 'camera-control-btn';
+                    snapshotBtn.innerHTML = '<i class="fas fa-camera"></i>';
+                    snapshotBtn.addEventListener('click', function() {
+                        showCameraFeedback(camera.id, '已保存快照');
+                    });
+                    controls.appendChild(snapshotBtn);
+                    
+                    cameraItem.appendChild(controls);
+                    
+                    // 添加到摄像头容器
+                    cameraContainerElement.appendChild(cameraItem);
+                });
+                
+                // 隐藏无监控消息
+                if (noMonitorMessage) {
+                    noMonitorMessage.style.display = 'none';
+                }
+            } catch (error) {
+                console.error("初始化摄像头监控时出错:", error);
+            }
+        }
+
+        // 筛选摄像头
+        function filterCameras() {
+            const filterValue = document.getElementById('camera-filter').value;
+            const searchText = document.getElementById('camera-search').value.toLowerCase();
+            
+            const cameraItems = document.querySelectorAll('.camera-item');
+            
+            cameraItems.forEach(item => {
+                const cameraStatus = item.dataset.status;
+                const cameraId = item.dataset.cameraId;
+                const cameraName = item.querySelector('.camera-name').textContent.toLowerCase();
+                const locationName = item.querySelector('.location-tag').textContent.toLowerCase();
+                const sensorId = item.dataset.sensorId.toLowerCase();
+                
+                let statusMatch = true;
+                if (filterValue !== 'all') {
+                    statusMatch = cameraStatus === filterValue;
+                }
+                
+                const searchMatch = 
+                    cameraName.includes(searchText) || 
+                    locationName.includes(searchText) || 
+                    sensorId.includes(searchText) ||
+                    `摄像头 ${cameraId}`.toLowerCase().includes(searchText);
+                
+                if (statusMatch && searchMatch) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            
+            // 更新无结果消息
+            let visibleCount = 0;
+            cameraItems.forEach(item => {
+                if (item.style.display !== 'none') {
+                    visibleCount++;
+                }
+            });
+            
+            if (visibleCount === 0) {
+                // 如果没有匹配项，显示消息
+                let noResultMessage = document.getElementById('no-camera-results');
+                if (!noResultMessage) {
+                    noResultMessage = document.createElement('div');
+                    noResultMessage.id = 'no-camera-results';
+                    noResultMessage.className = 'no-data-message';
+                    noResultMessage.textContent = '没有匹配的摄像头';
+                    cameraContainer.appendChild(noResultMessage);
+                } else {
+                    noResultMessage.style.display = 'block';
+                }
+            } else {
+                // 隐藏消息（如果存在）
+                const noResultMessage = document.getElementById('no-camera-results');
+                if (noResultMessage) {
+                    noResultMessage.style.display = 'none';
+                }
+            }
+        }
+
+        // 查看摄像头画面
+        function viewCamera(cameraId) {
+            console.log(`查看摄像头 #${cameraId} 画面`);
+            
+            // 在实际应用中，这里会弹出一个模态框显示实时视频
+            alert(`正在打开摄像头 #${cameraId} 的实时监控画面`);
+            
+            // 模拟加载新画面
+            const camera = document.querySelector(`.camera-item[data-camera-id="${cameraId}"] .camera-placeholder`);
+            if (camera) {
+                camera.querySelector('.camera-message').textContent = '正在加载实时画面...';
+                camera.querySelector('.camera-icon').textContent = 'sync';
+                
+                // 2秒后恢复
+                setTimeout(() => {
+                    camera.querySelector('.camera-message').textContent = '点击查看实时监控';
+                    camera.querySelector('.camera-icon').textContent = 'videocam';
+                }, 2000);
+            }
+        }
+
+        // 尝试重连摄像头
+        function attemptReconnect(cameraId) {
+            console.log(`尝试重连摄像头 #${cameraId}`);
+            
+            const cameraItem = document.querySelector(`.camera-item[data-camera-id="${cameraId}"]`);
+            if (!cameraItem) return;
+            
+            // 修改摄像头占位符显示重连状态
+            const placeholder = cameraItem.querySelector('.camera-placeholder');
+            placeholder.querySelector('.camera-message').textContent = '正在尝试重新连接...';
+            placeholder.querySelector('.camera-icon').textContent = 'sync';
+            
+            // 模拟重连过程
+            let connectionAttempts = 0;
+            const maxAttempts = 3;
+            
+            const attemptInterval = setInterval(() => {
+                connectionAttempts++;
+                console.log(`重连尝试 ${connectionAttempts}/${maxAttempts}`);
+                
+                if (connectionAttempts >= maxAttempts && Math.random() > 0.7) {
+                    // 模拟重连成功
+                    clearInterval(attemptInterval);
+                    
+                    // 更新状态为在线
+                    const statusBadge = cameraItem.querySelector('.camera-status');
+                    statusBadge.textContent = '在线';
+                    statusBadge.className = 'camera-status online';
+                    cameraItem.dataset.status = 'online';
+                    
+                    // 更新图标和消息
+                    placeholder.querySelector('.camera-message').textContent = '摄像头已恢复连接';
+                    placeholder.querySelector('.camera-icon').textContent = 'videocam';
+                    
+                    // 替换控制按钮
+                    const cameraControls = cameraItem.querySelector('.camera-controls');
+                    cameraControls.innerHTML = '';
+                    
+                    const controlButtons = [
+                        { action: 'history', icon: 'history', text: '历史记录' },
+                        { action: 'refresh', icon: 'refresh', text: '刷新' }
+                    ];
+                    
+                    controlButtons.forEach(btn => {
+                        const button = document.createElement('button');
+                        button.className = 'camera-control-btn';
+                        button.title = btn.text;
+                        button.innerHTML = `<span class="material-icons">${btn.icon}</span>`;
+                        button.dataset.action = btn.action;
+                        button.dataset.camera = cameraId;
+                        button.addEventListener('click', function() {
+                            controlCamera(cameraId, btn.action);
+                        });
+                        cameraControls.appendChild(button);
+                    });
+                    
+                    // 显示成功消息
+                    showActionFeedback(cameraId, '摄像头已恢复连接');
+                    
+                    // 更新系统状态
+                    updateSystemStatus();
+                } else if (connectionAttempts >= maxAttempts) {
+                    // 模拟重连失败
+                    clearInterval(attemptInterval);
+                    
+                    // 恢复离线状态
+                    placeholder.querySelector('.camera-message').textContent = '重连失败，摄像头离线';
+                    placeholder.querySelector('.camera-icon').textContent = 'videocam_off';
+                    
+                    // 显示失败消息
+                    showActionFeedback(cameraId, '重连失败');
+                }
+            }, 1000);
+        }
+
+        // 更新系统状态信息
+        function updateSystemStatus() {
+            // 统计摄像头状态
+            const cameras = document.querySelectorAll('.camera-item');
+            let onlineCount = 0;
+            let offlineCount = 0;
+            let warningCount = 0;
+            
+            cameras.forEach(camera => {
+                const status = camera.dataset.status;
+                if (status === 'online') onlineCount++;
+                else if (status === 'offline') offlineCount++;
+                else if (status === 'warning') warningCount++;
+            });
+            
+            const systemStatus = document.getElementById('system-status');
+            
+            if (offlineCount > 0 || warningCount > 0) {
+                let statusMessage = `摄像头状态: ${onlineCount} 在线`;
+                if (warningCount > 0) statusMessage += `, ${warningCount} 警告`;
+                if (offlineCount > 0) statusMessage += `, ${offlineCount} 离线`;
+                
+                systemStatus.textContent = statusMessage;
+                
+                if (offlineCount > 0) {
+                    document.getElementById('cameraAlert').style.color = '#dc3545';
+                } else {
+                    document.getElementById('cameraAlert').style.color = '#ffc107';
+                }
+            } else {
+                systemStatus.textContent = '监控系统运行正常，所有摄像头在线';
+                document.getElementById('cameraAlert').style.color = '#28a745';
+            }
+        }
+
+        // 模拟摄像头控制
+        function controlCamera(cameraId, action) {
+            console.log(`控制摄像头 #${cameraId}，动作: ${action}`);
+            
+            const cameraItem = document.querySelector(`.camera-item[data-camera-id="${cameraId}"]`);
+            if (!cameraItem) return;
+            
+            // 显示控制反馈（闪烁效果）
+            const placeholder = cameraItem.querySelector('.camera-placeholder');
+            placeholder.style.opacity = '0.7';
+            setTimeout(() => {
+                placeholder.style.opacity = '1';
+            }, 200);
+            
+            // 根据动作执行不同的模拟操作
+            switch(action) {
+                case 'history':
+                    // 模拟查看历史记录
+                    showActionFeedback(cameraId, '正在加载历史记录');
+                    break;
+                case 'refresh':
+                    // 刷新摄像头
+                    showActionFeedback(cameraId, '正在刷新连接');
+                    break;
+            }
+        }
+
+        // 显示摄像头操作反馈
+        function showActionFeedback(cameraId, message) {
+            const cameraItem = document.querySelector(`.camera-item[data-camera-id="${cameraId}"]`);
+            if (!cameraItem) return;
+            
+            // 创建反馈元素
+            const feedback = document.createElement('div');
+            feedback.className = 'camera-feedback';
+            feedback.style.position = 'absolute';
+            feedback.style.bottom = '10px';
+            feedback.style.left = '50%';
+            feedback.style.transform = 'translateX(-50%)';
+            feedback.style.backgroundColor = 'rgba(0,0,0,0.7)';
+            feedback.style.color = 'white';
+            feedback.style.padding = '5px 10px';
+            feedback.style.borderRadius = '4px';
+            feedback.style.fontSize = '12px';
+            feedback.style.zIndex = '100';
+            feedback.textContent = message;
+            
+            // 添加到摄像头视图
+            const cameraView = cameraItem.querySelector('.camera-view');
+            cameraView.appendChild(feedback);
+            
+            // 2秒后移除反馈
+            setTimeout(() => {
+                if (feedback.parentNode) {
+                    feedback.remove();
+                }
+            }, 2000);
+        }
+
+        // 标签页切换功能
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                
+                // 更新标签页状态
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // 更新内容区域
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.getElementById(`${tabId}-tab`).classList.add('active');
+                
+                // 如果切换到监控标签，初始化相应功能
+                if (tabId === 'monitor') {
+                    // 初始化摄像头监控而不是桥梁监控
+                    initCameraMonitor();
+                }
+            });
+        });
+
+        // 重置所有数据和状态
+        function resetAll() {
+            try {
+                // 重置数据
+                window.sensorData = [];
+                
+                // 重置文件输入
+                if (fileInput) fileInput.value = '';
+                if (fileInfo) fileInfo.textContent = '未选择文件';
+                if (uploadButton) uploadButton.disabled = true;
+                if (detectButton) detectButton.disabled = true;  // 确保检测按钮初始状态为禁用
+                
+                // 清除表格数据
+                if (dataTable) {
+                    const tableBody = dataTable.getElementsByTagName('tbody')[0];
+                    if (tableBody) tableBody.innerHTML = '';
+                }
+                if (noDataMessage) noDataMessage.style.display = 'block';
+                
+                // 清除图表
+                if (window.dataChart) {
+                    try {
+                        if (typeof window.dataChart.destroy === 'function') {
+                            window.dataChart.destroy();
+                        } else {
+                            console.log("Chart没有destroy方法，尝试其他方式清除");
+                            // 如果没有destroy方法，尝试释放Canvas资源
+                            const chartCanvas = document.getElementById('dataChart');
+                            if (chartCanvas) {
+                                const ctx = chartCanvas.getContext('2d');
+                                if (ctx) {
+                                    ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+                                }
+                            }
+                        }
+                    } catch (chartError) {
+                        console.error("清除图表时出错:", chartError);
+                    }
+                    window.dataChart = null;
+                }
+                if (noChartDataMessage) noChartDataMessage.style.display = 'block';
+                
+                // 清除异常分析结果
+                if (noAnalysisMessage) noAnalysisMessage.style.display = 'block';
+                if (analysisLoader) analysisLoader.style.display = 'none';
+                if (analysisSummary) analysisSummary.style.display = 'none';
+                if (anomalyList) anomalyList.innerHTML = '';
+                
+                // 隐藏桥梁监控
+                if (noMonitorMessage) noMonitorMessage.style.display = 'block';
+                
+                // 停止数据更新
+                if (typeof stopDataUpdates === 'function') {
+                    stopDataUpdates();
+                } else if (window.dataUpdateInterval) {
+                    clearInterval(window.dataUpdateInterval);
+                    window.dataUpdateInterval = null;
+                }
+                
+                // 切换到数据查看标签
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                const dataTab = document.querySelector('.tab[data-tab="data"]');
+                if (dataTab) dataTab.classList.add('active');
+                
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                const dataTabContent = document.getElementById('data-tab');
+                if (dataTabContent) dataTabContent.classList.add('active');
+            } catch (error) {
+                console.error('重置过程中出错:', error);
+            }
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            else return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        // 定义传感器值范围
+        const sensorRanges = {
+            '温度': {
+                normal: [-10, 45],   // 正常温度范围 (°C)
+                warning: [-20, 50],  // 警告温度范围
+                critical: [-30, 60]  // 危险温度范围
+            },
+            '应变': {
+                normal: [0, 500],    // 正常应变范围 (微应变)
+                warning: [500, 800], // 警告应变范围
+                critical: [800, 1000] // 危险应变范围
+            },
+            '振动': {
+                normal: [0, 20],     // 正常振动范围 (mm/s)
+                warning: [20, 40],   // 警告振动范围
+                critical: [40, 100]  // 危险振动范围
+            },
+            '倾角': {
+                normal: [-2, 2],     // 正常倾角范围 (°)
+                warning: [-4, 4],    // 警告倾角范围
+                critical: [-8, 8]    // 危险倾角范围
+            }
+        };
+
+        // 生成示例数据
+        function createSampleData() {
+            try {
+                // 重置现有数据
+                window.sensorData = [];
+                
+                // 当前时间
+                const now = new Date();
+                
+                // 不同类型的传感器
+                const sensorTypes = [
+                    { id: '温度传感器-主桥北段', type: '温度' },
+                    { id: '温度传感器-主桥中段', type: '温度' },
+                    { id: '温度传感器-主桥南段', type: '温度' },
+                    { id: '应变传感器-主桥北段', type: '应变' },
+                    { id: '应变传感器-主桥中段', type: '应变' },
+                    { id: '应变传感器-主桥南段', type: '应变' },
+                    { id: '振动传感器-主桥北段', type: '振动' },
+                    { id: '振动传感器-主桥中段', type: '振动' },
+                    { id: '振动传感器-主桥南段', type: '振动' },
+                    { id: '倾角传感器-主桥北段', type: '倾角' },
+                    { id: '倾角传感器-主桥中段', type: '倾角' },
+                    { id: '倾角传感器-主桥南段', type: '倾角' }
+                ];
+                
+                // 确保每次生成的数据至少包含一个异常值
+                let hasAnomalyPoint = false;
+                
+                // 随机选择一个传感器和一个时间点用于确保创建异常值
+                const anomalySensorIndex = Math.floor(Math.random() * sensorTypes.length);
+                const anomalyTimeIndex = Math.floor(Math.random() * 48);
+                
+                // 为每种传感器生成数据
+                sensorTypes.forEach((sensor, sensorIndex) => {
+                    // 确定传感器类型
+                    const range = sensorRanges[sensor.type];
+                    const baseValue = (range.normal[0] + range.normal[1]) / 2;
+                    
+                    // 生成48个数据点，每30分钟一个
+                    for (let i = 0; i < 48; i++) {
+                        const timestamp = new Date(now.getTime() - (47-i) * 30 * 60 * 1000); // 30分钟间隔
+                        const timeStr = timestamp.toLocaleString('zh-CN', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }).replace(',', ' ');
+                        
+                        // 根据传感器类型和时间生成合理的数据变化
+                        // 添加周期性变化和一些噪声
+                        const hourFactor = Math.sin((timestamp.getHours() / 24) * Math.PI * 2);
+                        const dayCycle = hourFactor * 0.2 * baseValue; // 昼夜循环
+                        
+                        // 为不同传感器类型使用不同的波动函数
+                        let cyclicChange = 0;
+                        if (sensor.type === '温度') {
+                            cyclicChange = Math.sin(i/12) * 5 + dayCycle;
+                        } else if (sensor.type === '应变') {
+                            cyclicChange = Math.sin(i/8) * 10 + dayCycle * 0.5;
+                        } else if (sensor.type === '振动') {
+                            cyclicChange = Math.sin(i/6) * 8 + Math.cos(i/10) * 5;
+                        } else if (sensor.type === '倾角') {
+                            cyclicChange = Math.sin(i/10) * 0.8 + Math.cos(i/15) * 0.6;
+                        }
+                        
+                        // 添加随机噪声
+                        const noise = (Math.random() - 0.5) * 0.05 * baseValue;
+                        
+                        // 计算最终值
+                        let value = baseValue + cyclicChange + noise;
+                        
+                        // 插入异常值 - 增加概率到20%
+                        let isAnomaly = Math.random() < 0.2;
+                        
+                        // 确保至少有一个异常值 - 为指定的传感器和时间点强制创建异常值
+                        if (sensorIndex === anomalySensorIndex && i === anomalyTimeIndex) {
+                            isAnomaly = true;
+                            hasAnomalyPoint = true;
+                        }
+                        
+                        if (isAnomaly) {
+                            // 异常值偏离幅度更大
+                            const anomalyFactor = (Math.random() < 0.5 ? 1 : -1) * (Math.random() * 0.5 + 0.3);
+                            value += anomalyFactor * baseValue;
+                        }
+                        
+                        // 确保在有效范围内
+                        const min = range.normal[0] - Math.abs(range.normal[0] * 0.5);
+                        const max = range.critical[1];
+                        value = Math.max(min, Math.min(max, value));
+                        
+                        // 确定状态
+                        let status = 'normal';
+                        if (value < range.normal[0] || value > range.normal[1]) {
+                            if (value < range.warning[0] || value > range.warning[1]) {
+                                status = 'danger';
+                            } else {
+                                status = 'warning';
+                            }
+                        }
+                        
+                        // 添加到数据数组
+                        window.sensorData.push({
+                            timestamp: timeStr,
+                            sensorId: sensor.id,
+                            sensorType: sensor.type,
+                            value: parseFloat(value.toFixed(2)),
+                            status: status
+                        });
+                    }
+                });
+                
+                // 如果没有自然生成的异常值，强制在随机位置创建一个
+                if (!hasAnomalyPoint) {
+                    const randomIndex = Math.floor(Math.random() * window.sensorData.length);
+                    const dataPoint = window.sensorData[randomIndex];
+                    const range = sensorRanges[dataPoint.sensorType];
+                    
+                    // 创建明显的异常值
+                    const baseValue = (range.normal[0] + range.normal[1]) / 2;
+                    const anomalyFactor = (Math.random() < 0.5 ? 1 : -1) * 0.8;
+                    let anomalyValue = baseValue + (anomalyFactor * baseValue);
+                    
+                    // 确保在范围内但异常
+                    anomalyValue = Math.max(range.warning[1] + 1, Math.min(range.critical[1], anomalyValue));
+                    
+                    // 更新数据点
+                    window.sensorData[randomIndex].value = parseFloat(anomalyValue.toFixed(2));
+                    window.sensorData[randomIndex].status = 'danger';
+                }
+                
+                // 确保检测按钮启用
+                if (detectButton) detectButton.disabled = false;
+                
+                // 更新显示
+                displayData();
+                createChart();
+                
+                console.log("示例数据已生成，包含", window.sensorData.length, "个数据点");
+            } catch (error) {
+                console.error("生成示例数据出错:", error);
+                alert("生成示例数据时出错: " + error.message);
+            }
+        }
+        
+        // 生成并下载示例文件
+        function generateExampleFile() {
+            // 阻止默认链接点击行为
+            event.preventDefault();
+            
+            // 生成示例数据
+            const exampleData = [];
+            const now = new Date();
+            
+            // 添加表头
+            exampleData.push("时间戳,传感器ID,数值");
+            
+            // 传感器类型与ID定义，确保与createSampleData函数保持一致
+            const sensorTypes = [
+                { id: '温度传感器-主桥北段', type: '温度', baseValue: 25 },
+                { id: '温度传感器-主桥中段', type: '温度', baseValue: 27 },
+                { id: '温度传感器-主桥南段', type: '温度', baseValue: 26 },
+                { id: '应变传感器-主桥北段', type: '应变', baseValue: 200 },
+                { id: '应变传感器-主桥中段', type: '应变', baseValue: 210 },
+                { id: '应变传感器-主桥南段', type: '应变', baseValue: 220 },
+                { id: '振动传感器-主桥北段', type: '振动', baseValue: 0.5 },
+                { id: '振动传感器-主桥中段', type: '振动', baseValue: 0.4 },
+                { id: '振动传感器-主桥南段', type: '振动', baseValue: 0.6 },
+                { id: '倾角传感器-主桥北段', type: '倾角', baseValue: 0.2 },
+                { id: '倾角传感器-主桥中段', type: '倾角', baseValue: 0.3 },
+                { id: '倾角传感器-主桥南段', type: '倾角', baseValue: 0.1 }
+            ];
+            
+            // 为每个传感器生成数据点
+            sensorTypes.forEach(sensor => {
+                for (let i = 0; i < 20; i++) {
+                    const timestamp = new Date(now.getTime() - (19-i) * 30 * 60 * 1000); // 30分钟间隔
+                    const timeStr = timestamp.toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    }).replace(',', ' ');
+                    
+                    // 根据传感器类型生成不同的波动模式
+                    let value = sensor.baseValue;
+                    
+                    if (sensor.type === '温度') {
+                        value += Math.sin(i/3) * 2 + (Math.random() - 0.5);
+                    } else if (sensor.type === '应变') {
+                        value += Math.sin(i/4) * 15 + (Math.random() - 0.5) * 5;
+                    } else if (sensor.type === '振动') {
+                        value += Math.sin(i/2) * 0.1 + (Math.random() - 0.5) * 0.1;
+                        // 添加一个异常值
+                        if (i === 10 && sensor.id === '振动传感器-主桥南段') value = 1.2;
+                    } else if (sensor.type === '倾角') {
+                        value += Math.sin(i/3) * 0.1 + (Math.random() - 0.5) * 0.05;
+                    }
+                    
+                    exampleData.push(`${timeStr},${sensor.id},${value.toFixed(2)}`);
+                }
+            });
+            
+            // 将示例数据转换为CSV文本
+            const csvContent = exampleData.join('\n');
+            
+            // 创建Blob对象
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            
+            // 创建下载链接
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', '桥梁监测数据示例.csv');
+            link.style.visibility = 'hidden';
+            
+            // 添加到DOM，触发下载，然后移除
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            console.log("已生成包含各类传感器的示例数据文件");
+        }
+        
+        // 随机刷新数据功能
+        function startRandomDataUpdates() {
+            // 停止之前的更新
+            stopDataUpdates();
+            
+            // 确保有数据
+            if (!sensorData || sensorData.length === 0) {
+                alert('请先上传数据或生成示例数据');
+                return;
+            }
+            
+            // 显示正在刷新提示
+            fileInfo.textContent = '数据刷新中...';
+            refreshButton.textContent = '停止刷新';
+            refreshButton.classList.add('danger');
+            
+            // 启用检测按钮，确保在数据刷新时可以进行检测
+            detectButton.disabled = false;
+            
+            // 每5秒更新一次数据（更符合桥梁监测的实际频率）
+            dataUpdateInterval = setInterval(() => {
+                randomlyUpdateData();
+            }, 5000);
+        }
+        
+        // 停止数据更新
+        function stopDataUpdates() {
+            if (dataUpdateInterval) {
+                clearInterval(dataUpdateInterval);
+                dataUpdateInterval = null;
+                
+                refreshButton.textContent = '随机刷新数据';
+                refreshButton.classList.remove('danger');
+                
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    fileInfo.textContent = `已选择文件: ${file.name} (${formatFileSize(file.size)})`;
+                } else {
+                    fileInfo.textContent = '未选择文件';
+                }
+            }
+        }
+        
+        // 随机更新数据，使模拟数据更符合物理现实
+        function randomlyUpdateData() {
+            if (!sensorData || sensorData.length === 0) return;
+            
+            // 获取当前时间作为新的数据点时间戳
+            const now = new Date();
+            const timeStr = now.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            // 获取唯一的传感器ID列表
+            const uniqueSensors = [...new Set(sensorData.map(item => item.sensorId))];
+            
+            // 创建环境因素，确保数据之间的关联性
+            const environmentalFactor = Math.sin(Date.now() / 10000000) * 0.15; // 缓慢变化的环境因素
+            const timeOfDayFactor = Math.sin(now.getHours() / 24 * Math.PI) * 0.1; // 日间变化因素
+            const bridgeLoadFactor = Math.sin(Date.now() / 3600000) * 0.08; // 桥梁负载变化
+            
+            // 随机选择一个传感器来确保创建异常值
+            const anomalySensorIndex = Math.floor(Math.random() * uniqueSensors.length);
+            let hasCreatedAnomaly = false;
+            
+            // 为每个传感器创建新的数据点
+            uniqueSensors.forEach((sensorId, sensorIndex) => {
+                // 获取该传感器的历史数据
+                const sensorPoints = sensorData.filter(item => item.sensorId === sensorId);
+                const lastPoint = sensorPoints[sensorPoints.length - 1];
+                const currentValue = parseFloat(lastPoint.value);
+                
+                // 确定传感器类型
+                let sensorType = '其他';
+                if (sensorId.includes('温度')) sensorType = '温度';
+                else if (sensorId.includes('应变')) sensorType = '应变';
+                else if (sensorId.includes('振动')) sensorType = '振动';
+                else if (sensorId.includes('倾角')) sensorType = '倾角';
+                
+                // 确定传感器位置
+                let sensorLocation = '中段';
+                for (const section of ['北段', '中段', '南段', '东段', '西段']) {
+                    if (sensorId.includes(section)) {
+                        sensorLocation = section;
+                        break;
+                    }
+                }
+                
+                // 根据传感器类型获取数据范围
+                const range = sensorRanges[sensorType] || {
+                    normal: [0, 100],
+                    warning: [-10, 110],
+                    critical: [-20, 120],
+                    min: -20,
+                    max: 120,
+                    warningThreshold: 110,
+                    alarmThreshold: 120
+                };
+                
+                // 计算基础变化量
+                const randomFactor = (Math.random() * 2 - 1) * 0.01 * currentValue;
+                
+                // 环境因素影响
+                let environmentalImpact = 0;
+                if (sensorType === '温度') {
+                    environmentalImpact = environmentalFactor * 4 + timeOfDayFactor * 2;
+                } else if (sensorType === '应变') {
+                    environmentalImpact = bridgeLoadFactor * 50 + timeOfDayFactor * 25;
+                } else if (sensorType === '振动') {
+                    environmentalImpact = bridgeLoadFactor * 2 + environmentalFactor * 1;
+                } else if (sensorType === '倾角') {
+                    environmentalImpact = bridgeLoadFactor * 0.4 + environmentalFactor * 0.5;
+                } else {
+                    environmentalImpact = environmentalFactor * 10 + timeOfDayFactor * 5;
+                }
+                
+                // 总变化量 = 环境影响 + 随机噪声
+                let baseChange = environmentalImpact + randomFactor;
+                
+                // 计算新值
+                let newValue = currentValue + baseChange;
+                
+                // 检查是否创建异常值 - 增加概率到15%
+                let isAnomaly = Math.random() < 0.15;
+                
+                // 确保至少有一个异常值 - 为指定的传感器强制创建异常值
+                if (sensorIndex === anomalySensorIndex && !hasCreatedAnomaly) {
+                    isAnomaly = true;
+                    hasCreatedAnomaly = true;
+                }
+                
+                if (isAnomaly) {
+                    // 创建明显的异常值
+                    const baseValue = (range.normal[0] + range.normal[1]) / 2;
+                    const anomalyFactor = (Math.random() < 0.5 ? 1 : -1) * (Math.random() * 0.4 + 0.3);
+                    newValue = baseValue + (anomalyFactor * baseValue);
+                    
+                    // 确保异常值明显偏离但不超出有效范围
+                    newValue = Math.max(range.normal[0] - Math.abs(range.normal[0] * 0.4), 
+                                      Math.min(range.critical[1], newValue));
+                }
+                
+                // 确定传感器状态
+                let status = 'normal';
+                if (newValue < range.normal[0] || newValue > range.normal[1]) {
+                    if (newValue < range.warning[0] || newValue > range.warning[1]) {
+                        status = 'danger';
+                    } else {
+                        status = 'warning';
+                    }
+                }
+                
+                // 添加新的数据点
+                sensorData.push({
+                    timestamp: timeStr,
+                    sensorId: sensorId,
+                    sensorType: sensorType,
+                    value: parseFloat(newValue.toFixed(2)),
+                    status: status
+                });
+                
+                // 保持数据点数量在一个合理范围内（每个传感器最多保留100个点）
+                const maxPointsPerSensor = 100;
+                const currentPoints = sensorData.filter(item => item.sensorId === sensorId);
+                if (currentPoints.length > maxPointsPerSensor) {
+                    // 找到并移除最早的数据点
+                    const oldestIndex = sensorData.findIndex(item => item.sensorId === sensorId);
+                    if (oldestIndex !== -1) {
+                        sensorData.splice(oldestIndex, 1);
+                    }
+                }
+            });
+            
+            // 更新显示和图表
+            displayData();
+            createChart();
+            
+            // 确保检测按钮启用
+            if (detectButton) detectButton.disabled = false;
+        }
+
+        // 添加示例数据按钮和下载示例文件功能
+        document.getElementById('sampleButton').addEventListener('click', function() {
+            // 生成示例数据
+            createSampleData();
+            
+            // 确保检测按钮启用
+            detectButton.disabled = false;
+        });
+        downloadExample.addEventListener('click', generateExampleFile);
+        
+        // 随机刷新按钮点击事件
+        refreshButton.addEventListener('click', function() {
+            if (dataUpdateInterval) {
+                stopDataUpdates();
+            } else {
+                startRandomDataUpdates();
+            }
+        });
+        
+        // 处理上传的数据
+        function processData(content) {
+            try {
+                const lines = content.split('\n');
+                console.log("文件行数:", lines.length);
+                
+                window.sensorData = [];
+                
+                let validLines = 0;
+                let skippedLines = 0;
+                
+                // 跳过第一行（标题行）
+                const hasHeader = lines.length > 0 && lines[0].includes('时间戳') && lines[0].includes('传感器ID');
+                const startLine = hasHeader ? 1 : 0;
+                
+                for (let i = startLine; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line !== '') {
+                        const parts = line.split(',');
+                        // 修改逻辑，支持更灵活的数据格式
+                        if (parts.length >= 2) {
+                            try {
+                                const timestamp = parts[0].trim();
+                                const sensorId = parts.length >= 3 ? parts[1].trim() : `传感器${i+1}`;
+                                const valueIndex = parts.length >= 3 ? 2 : 1;
+                                const valueStr = parts[valueIndex].trim();
+                                const value = parseFloat(valueStr);
+                                
+                                if (!isNaN(value)) {
+                                    // 从传感器ID中确定传感器类型
+                                    let sensorType = '其他';
+                                    if (sensorId.includes('温度')) sensorType = '温度';
+                                    else if (sensorId.includes('应变')) sensorType = '应变';
+                                    else if (sensorId.includes('振动')) sensorType = '振动';
+                                    else if (sensorId.includes('倾角')) sensorType = '倾角';
+                                    
+                                    // 从传感器类型获取数据范围，用于确定状态
+                                    const range = sensorRanges[sensorType] || {
+                                        normal: [0, 100],
+                                        warning: [-10, 110],
+                                        critical: [-20, 120]
+                                    };
+                                    
+                                    // 确定状态
+                                    let status = 'normal';
+                                    if (value < range.normal[0] || value > range.normal[1]) {
+                                        if (value < range.warning[0] || value > range.warning[1]) {
+                                            status = 'danger';
+                                        } else {
+                                            status = 'warning';
+                                        }
+                                    }
+                                    
+                                    window.sensorData.push({
+                                        timestamp: timestamp,
+                                        sensorId: sensorId,
+                                        sensorType: sensorType,
+                                        value: value,
+                                        status: status
+                                    });
+                                    validLines++;
+                                } else {
+                                    console.warn(`第${i+1}行数值无效: "${valueStr}"`);
+                                    skippedLines++;
+                                }
+                            } catch (e) {
+                                console.warn(`解析第${i+1}行时出错:`, e.message, "行内容:", line);
+                                skippedLines++;
+                            }
+                        } else {
+                            console.warn(`第${i+1}行格式不正确，至少需要2个值: ${line}`);
+                            skippedLines++;
+                        }
+                    }
+                }
+                
+                console.log(`数据处理完成: 有效行数=${validLines}, 跳过行数=${skippedLines}`);
+                
+                // 确保即使没有数据也不会报错
+                if (window.sensorData.length === 0) {
+                    console.warn("没有找到有效数据");
+                    if (noDataMessage) noDataMessage.style.display = 'block';
+                    return;
+                }
+                
+                displayData();
+                createChart();
+                initBridgeMonitor();
+                
+            } catch (error) {
+                console.error("处理数据时发生错误:", error);
+                alert("处理数据时发生错误: " + error.message);
+            }
+        }
+        
+        // 初始化
+        resetAll();
+        // 检查登录状态
+        checkLoginStatus();
+        // 初始化事件控制面板
+        initEventControls();
+
+        // 确定异常类型
+        function determineAnomalyType(index, values, zScore) {
+            try {
+                // 检查前后是否也是异常，判断连续性异常
+                let isContinuous = false;
+                
+                if (index > 1) {  // 确保有前两个点
+                    try {
+                        isContinuous = Math.abs((values[index-1] - values[index-2]) / Math.max(0.01, Math.abs(values[index-2]))) > 0.1;
+                    } catch (e) {
+                        console.warn("计算前导点连续性异常时出错:", e.message);
+                    }
+                }
+                
+                if (!isContinuous && index < values.length - 1) {  // 检查后一个点
+                    try {
+                        isContinuous = Math.abs((values[index+1] - values[index]) / Math.max(0.01, Math.abs(values[index]))) > 0.1;
+                    } catch (e) {
+                        console.warn("计算后继点连续性异常时出错:", e.message);
+                    }
+                }
+                
+                // 检查周围点是否形成群体
+                const startIdx = Math.max(0, index - 3);
+                const endIdx = Math.min(values.length, index + 4);
+                const nearbyPoints = values.slice(startIdx, endIdx);
+                
+                const nearbyMean = nearbyPoints.reduce((acc, val) => acc + val, 0) / nearbyPoints.length;
+                const globalMean = values.reduce((acc, val) => acc + val, 0) / values.length;
+                
+                // 避免除以零，加入安全检查
+                const denominator = Math.max(0.01, Math.abs(globalMean));
+                const isCluster = Math.abs((nearbyMean - globalMean) / denominator) > 0.1 && nearbyPoints.length >= 3;
+                
+                if (isCluster) {
+                    return '群体异常';
+                } else if (isContinuous) {
+                    return '连续性异常';
+                } else {
+                    return '单点异常';
+                }
+            } catch (error) {
+                console.error("确定异常类型时出错:", error);
+                return '未分类异常';  // 返回一个默认值
+            }
+        }
+
+        // 格式化日期时间
+        function formatDateTime(date) {
+            const dt = new Date(date);
+            const year = dt.getFullYear();
+            const month = String(dt.getMonth() + 1).padStart(2, '0');
+            const day = String(dt.getDate()).padStart(2, '0');
+            const hours = String(dt.getHours()).padStart(2, '0');
+            const minutes = String(dt.getMinutes()).padStart(2, '0');
+            const seconds = String(dt.getSeconds()).padStart(2, '0');
+            
+            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        }
+
+        // 模拟Chrome扩展API以防止错误
+        if (typeof chrome === 'undefined' || !chrome.runtime) {
+            window.chrome = window.chrome || {};
+            chrome.runtime = chrome.runtime || {};
+            
+            // 模拟runtime.sendMessage和onMessage以防止错误
+            const originalConsoleError = console.error;
+            console.error = function(...args) {
+                // 过滤掉关于chrome.runtime的错误消息
+                if (args && args[0] && typeof args[0] === 'string' && 
+                    (args[0].includes('chrome.runtime') || 
+                     args[0].includes('Receiving end does not exist') || 
+                     args[0].includes('message port closed'))) {
+                    return; // 不打印Chrome扩展相关错误
+                }
+                originalConsoleError.apply(console, args);
+            };
+            
+            // 创建无操作函数
+            chrome.runtime.sendMessage = function() {
+                return Promise.resolve();
+            };
+            chrome.runtime.onMessage = {
+                addListener: function() {},
+                removeListener: function() {}
+            };
+        }
+
+        // 数据显示函数
+        function displayData() {
+            try {
+                console.log("开始显示数据...");
+                // 检查数据是否存在
+                if (!window.sensorData || window.sensorData.length === 0) {
+                    if (noDataMessage) noDataMessage.style.display = 'block';
+                    if (dataTable) {
+                        const tableBody = dataTable.getElementsByTagName('tbody')[0];
+                        if (tableBody) tableBody.innerHTML = '';
+                    }
+                    console.log("没有数据可显示");
+                    return;
+                }
+                
+                // 打印传感器类型分布数据，用于调试
+                const typeCounts = {};
+                window.sensorData.forEach(data => {
+                    const type = data.sensorType || '未知';
+                    typeCounts[type] = (typeCounts[type] || 0) + 1;
+                });
+                console.log("数据类型分布:", JSON.stringify(typeCounts));
+                
+                // 隐藏无数据消息
+                if (noDataMessage) noDataMessage.style.display = 'none';
+                
+                // 获取表格主体并清空
+                if (!dataTable) {
+                    console.error("未找到数据表格元素");
+                    return;
+                }
+                const tableBody = dataTable.getElementsByTagName('tbody')[0];
+                if (!tableBody) {
+                    console.error("未找到表格主体元素");
+                    return;
+                }
+                tableBody.innerHTML = '';
+                
+                // 显示前50条数据
+                const maxDisplay = Math.min(50, window.sensorData.length);
+                
+                // 按照时间降序排序所有数据
+                const sortedData = [...window.sensorData];
+                sortedData.sort((a, b) => {
+                    return new Date(b.timestamp) - new Date(a.timestamp);
+                });
+                
+                // 取前N条数据
+                const latestData = sortedData.slice(0, maxDisplay);
+                
+                // 确保显示各种类型的传感器数据
+                const typeFilters = ['温度', '应变', '振动', '倾角'];
+                let dataToShow = [];
+                
+                // 为每种传感器类型选择一些数据点
+                typeFilters.forEach(type => {
+                    const typeData = latestData.filter(data => data.sensorType === type);
+                    if (typeData.length > 0) {
+                        // 每种类型最多取10个数据点
+                        dataToShow = dataToShow.concat(typeData.slice(0, 10));
+                    }
+                });
+                
+                // 如果按类型筛选后数据太少，补充其他数据
+                if (dataToShow.length < maxDisplay) {
+                    const otherData = latestData.filter(data => !dataToShow.includes(data));
+                    dataToShow = dataToShow.concat(otherData.slice(0, maxDisplay - dataToShow.length));
+                }
+                
+                // 再次按时间排序
+                dataToShow.sort((a, b) => {
+                    return new Date(b.timestamp) - new Date(a.timestamp);
+                });
+                
+                dataToShow.forEach(data => {
+                    const row = document.createElement('tr');
+                    
+                    // 添加传感器类型标识
+                    if (data.sensorType) {
+                        row.classList.add(`type-${data.sensorType}`);
+                    }
+                    
+                    // 根据状态添加类
+                    if (data.status === 'warning') {
+                        row.classList.add('warning-row');
+                    } else if (data.status === 'danger' || data.status === 'alarm') {
+                        row.classList.add('danger-row');
+                    }
+                    
+                    // 创建并添加单元格
+                    const timestampCell = document.createElement('td');
+                    timestampCell.textContent = data.timestamp;
+                    row.appendChild(timestampCell);
+                    
+                    const sensorCell = document.createElement('td');
+                    sensorCell.textContent = data.sensorId;
+                    
+                    // 添加传感器类型作为标记
+                    if (data.sensorType) {
+                        const typeSpan = document.createElement('span');
+                        typeSpan.className = 'sensor-type-tag';
+                        typeSpan.textContent = data.sensorType;
+                        sensorCell.appendChild(document.createElement('br'));
+                        sensorCell.appendChild(typeSpan);
+                    }
+                    
+                    row.appendChild(sensorCell);
+                    
+                    const valueCell = document.createElement('td');
+                    valueCell.textContent = data.value;
+                    row.appendChild(valueCell);
+                    
+                    const statusCell = document.createElement('td');
+                    const statusBadge = document.createElement('span');
+                    statusBadge.classList.add('status-badge');
+                    
+                    if (data.status === 'normal') {
+                        statusBadge.classList.add('status-normal');
+                        statusBadge.textContent = '正常';
+                    } else if (data.status === 'warning') {
+                        statusBadge.classList.add('status-warning');
+                        statusBadge.textContent = '警告';
+                    } else {
+                        statusBadge.classList.add('status-danger');
+                        statusBadge.textContent = '危险';
+                    }
+                    
+                    statusCell.appendChild(statusBadge);
+                    row.appendChild(statusCell);
+                    
+                    // 添加行到表格
+                    tableBody.appendChild(row);
+                });
+                
+                console.log(`显示了 ${dataToShow.length} 条数据，包含多种传感器类型`);
+            } catch (error) {
+                console.error('显示数据时出错:', error);
+            }
+        }
+        
+        // 创建图表函数
+        function createChart() {
+            try {
+                // 检查是否有Chart对象
+                if (typeof Chart === 'undefined') {
+                    console.error('Chart.js 未加载');
+                    return;
+                }
+                
+                // 检查数据是否存在
+                if (!window.sensorData || window.sensorData.length === 0) {
+                    if (noChartDataMessage) noChartDataMessage.style.display = 'block';
+                    return;
+                }
+                
+                // 找到图表容器
+                const chartCanvas = document.getElementById('dataChart');
+                if (!chartCanvas) {
+                    console.error('未找到图表容器');
+                    return;
+                }
+                
+                // 隐藏无数据消息
+                if (noChartDataMessage) noChartDataMessage.style.display = 'none';
+                
+                // 如果已有图表，先销毁
+                if (window.dataChart) {
+                    try {
+                        if (typeof window.dataChart.destroy === 'function') {
+                            window.dataChart.destroy();
+                        } else {
+                            console.log("Chart没有destroy方法，尝试其他方式清除");
+                            // 如果没有destroy方法，尝试释放Canvas资源
+                            const ctx = chartCanvas.getContext('2d');
+                            if (ctx) {
+                                ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+                            }
+                        }
+                    } catch (chartError) {
+                        console.error("清除现有图表时出错:", chartError);
+                    }
+                }
+                
+                // 按传感器对数据进行分组
+                const sensorGroups = {};
+                window.sensorData.forEach(data => {
+                    if (!sensorGroups[data.sensorId]) {
+                        sensorGroups[data.sensorId] = [];
+                    }
+                    sensorGroups[data.sensorId].push({
+                        x: data.timestamp,
+                        y: parseFloat(data.value),
+                        status: data.status
+                    });
+                });
+                
+                // 为每个传感器创建数据集
+                const datasets = [];
+                const colors = [
+                    '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', 
+                    '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', 
+                    '#bcbd22', '#17becf'
+                ];
+                
+                Object.keys(sensorGroups).forEach((sensorId, index) => {
+                    // 对数据按时间排序
+                    sensorGroups[sensorId].sort((a, b) => new Date(a.x) - new Date(b.x));
+                    
+                    // 取最后25个点以避免过度拥挤
+                    const points = sensorGroups[sensorId].slice(-25);
+                    
+                    datasets.push({
+                        label: sensorId,
+                        data: points,
+                        borderColor: colors[index % colors.length],
+                        backgroundColor: colors[index % colors.length] + '20',
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: function(context) {
+                            const point = context.dataset.data[context.dataIndex];
+                            if (point.status === 'danger' || point.status === 'alarm') {
+                                return '#dc3545';
+                            } else if (point.status === 'warning') {
+                                return '#ffc107';
+                            }
+                            return colors[index % colors.length];
+                        },
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 1.5,
+                        tension: 0.2
+                    });
+                });
+                
+                // 创建图表
+                window.dataChart = new Chart(chartCanvas, {
+                    type: 'line',
+                    data: {
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'category',
+                                title: {
+                                    display: true,
+                                    text: '时间'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: '数值'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const point = context.dataset.data[context.dataIndex];
+                                        let status = '正常';
+                                        if (point.status === 'warning') status = '警告';
+                                        if (point.status === 'danger' || point.status === 'alarm') status = '危险';
+                                        return `${context.dataset.label}: ${point.y} (${status})`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                console.log('图表已创建，共显示 ' + datasets.length + ' 个传感器的数据');
+            } catch (error) {
+                console.error('创建图表时出错:', error);
+            }
+        }
+        
+        // 初始化事件控制面板函数
+        function initEventControls() {
+            try {
+                // 这里是事件控制面板的初始化代码
+                console.log('事件控制面板已初始化');
+            } catch (error) {
+                console.error('初始化事件控制面板时出错:', error);
+            }
+        }
+
+        // 替换登录状态检查函数，因为我们已经移除了登录功能
+        function checkLoginStatus() {
+            console.log('已跳过登录检查，系统直接进入');
+            // 不执行任何操作，仅作为兼容旧代码的存根函数
+        }
+        
+        // 添加异常检测启动函数
+        function startAnomalyDetection() {
+            try {
+                // 检查是否有数据
+                if (!window.sensorData || window.sensorData.length === 0) {
+                    alert('没有数据可供检测!');
+                    return;
+                }
+
+                // 显示加载动画
+                if (analysisLoader) analysisLoader.style.display = 'block';
+                if (noAnalysisMessage) noAnalysisMessage.style.display = 'none';
+                if (analysisSummary) analysisSummary.style.display = 'none';
+                if (anomalyList) anomalyList.innerHTML = '';
+                
+                // 显示分析内容区域
+                const analysisContent = document.getElementById('analysis-content');
+                if (analysisContent) analysisContent.style.display = 'block';
+                
+                // 模拟异常检测过程 - 真实场景中这应该调用异常检测算法
+                setTimeout(function() {
+                    // 处理完成，显示结果
+                    detectAnomalies(window.sensorData);
+                }, 1500); // 模拟处理时间
+            } catch (error) {
+                console.error('启动异常检测时出错:', error);
+                alert('启动异常检测过程中出错: ' + error.message);
+            }
+        }
+        
+        // 异常检测算法
+        function detectAnomalies() {
+            try {
+                // 检查是否有数据
+                if (!window.sensorData || window.sensorData.length === 0) {
+                    alert('没有数据可供分析。请先上传数据。');
+                    return;
+                }
+                
+                // 显示分析加载动画
+                if (analysisLoader) analysisLoader.style.display = 'block';
+                if (noAnalysisMessage) noAnalysisMessage.style.display = 'none';
+                if (analysisSummary) analysisSummary.style.display = 'none';
+                
+                // 显示分析内容区域
+                const analysisContent = document.getElementById('analysis-content');
+                if (analysisContent) {
+                    analysisContent.style.display = 'block';
+                }
+                
+                // 显示图表区域
+                const anomalyChartSection = document.getElementById('anomaly-chart-section');
+                if (anomalyChartSection) {
+                    anomalyChartSection.style.display = 'block';
+                }
+                
+                console.log('开始异常检测...');
+                console.log(`数据点总数: ${window.sensorData.length}`);
+                
+                // 按传感器ID分组数据
+                const sensorGroups = {};
+                
+                window.sensorData.forEach(dataPoint => {
+                    if (!sensorGroups[dataPoint.sensorId]) {
+                        sensorGroups[dataPoint.sensorId] = {
+                            type: dataPoint.sensorType,
+                            values: [],
+                            timestamps: [],
+                            anomalies: []
+                        };
+                    }
+                    
+                    sensorGroups[dataPoint.sensorId].values.push(dataPoint.value);
+                    sensorGroups[dataPoint.sensorId].timestamps.push(dataPoint.timestamp);
+                });
+                
+                let totalAnomalies = 0;
+                let sensorAnomalyCount = 0;
+                
+                // 遍历每个传感器组
+                Object.keys(sensorGroups).forEach(sensorId => {
+                    const group = sensorGroups[sensorId];
+                    const values = group.values;
+                    
+                    // 计算均值和标准差
+                    const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+                    const stdDev = Math.sqrt(
+                        values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length
+                    );
+                    
+                    // 使用固定的3.0作为Z-score阈值
+                    const threshold = 3.0;
+                    
+                    // 检测异常
+                    let hasAnomaly = false;
+                    values.forEach((value, index) => {
+                        const zScore = Math.abs((value - mean) / Math.max(stdDev, 0.001)); // 防止除以0
+                        
+                        if (zScore > threshold) {
+                            // 这是一个异常点
+                            const anomalyType = determineAnomalyType(index, values, zScore);
+                            
+                            group.anomalies.push({
+                                index: index,
+                                value: value,
+                                timestamp: group.timestamps[index],
+                                zScore: zScore,
+                                type: anomalyType
+                            });
+                            
+                            hasAnomaly = true;
+                            totalAnomalies++;
+                        }
+                    });
+                    
+                    if (hasAnomaly) {
+                        sensorAnomalyCount++;
+                    }
+                });
+                
+                // 显示结果和创建图表
+                displayAnomalyResults(sensorGroups, totalAnomalies, sensorAnomalyCount);
+                
+                // 隐藏加载动画
+                if (analysisLoader) analysisLoader.style.display = 'none';
+                
+                console.log(`检测完成，发现 ${totalAnomalies} 个异常点，涉及 ${sensorAnomalyCount} 个传感器`);
+            } catch (error) {
+                console.error('检测异常时出错:', error);
+                alert('检测异常时出错: ' + error.message);
+                if (analysisLoader) analysisLoader.style.display = 'none';
+            }
+        }
+        
+        // 显示异常结果
+        function displayAnomalyResults(sensorGroups, totalAnomalies, sensorAnomalyCount) {
+            try {
+                // 隐藏加载和无数据提示 - 始终隐藏无数据消息
+                if (analysisLoader) analysisLoader.style.display = 'none';
+                
+                const noAnalysisMessage = document.getElementById('no-analysis-message');
+                if (noAnalysisMessage) noAnalysisMessage.style.display = 'none';
+                
+                // 显示结果摘要
+                if (analysisSummary) {
+                    analysisSummary.style.display = 'block';
+                    analysisSummary.innerHTML = `
+                        <div class="alert-compact alert-info">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h5 style="margin: 0; font-size: 16px;">异常检测完成</h5>
+                                <span style="font-size: 14px;">${new Date().toLocaleString()}</span>
+                            </div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px;">
+                                <div style="flex: 1; min-width: 120px;">
+                                    <div style="font-size: 13px; color: #4a5568;">数据点数量</div>
+                                    <div style="font-size: 18px; font-weight: bold; color: #2c5282;">${window.sensorData.length}</div>
+                                </div>
+                                <div style="flex: 1; min-width: 120px;">
+                                    <div style="font-size: 13px; color: #4a5568;">异常点数量</div>
+                                    <div style="font-size: 18px; font-weight: bold; color: #c05621;">${totalAnomalies}</div>
+                                </div>
+                                <div style="flex: 1; min-width: 120px;">
+                                    <div style="font-size: 13px; color: #4a5568;">异常传感器数</div>
+                                    <div style="font-size: 18px; font-weight: bold; color: #2c5282;">${sensorAnomalyCount}</div>
+                                </div>
+                                <div style="flex: 1; min-width: 120px;">
+                                    <div style="font-size: 13px; color: #4a5568;">异常率</div>
+                                    <div style="font-size: 18px; font-weight: bold; color: ${(totalAnomalies/window.sensorData.length) > 0.05 ? '#c53030' : '#2c5282'};">
+                                        ${(totalAnomalies/window.sensorData.length*100).toFixed(2)}%
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 过滤异常类型
+                const anomalyTypeFilter = document.getElementById('anomaly-type-filter');
+                let typeFilter = 'all';
+                if (anomalyTypeFilter) {
+                    typeFilter = anomalyTypeFilter.value;
+                }
+                
+                // 显示异常列表
+                const anomalyListElement = document.getElementById('anomaly-list');
+                if (!anomalyListElement) {
+                    console.error('未找到异常列表元素(#anomaly-list)');
+                    return;
+                }
+                
+                // 清空列表内容
+                anomalyListElement.innerHTML = '';
+                
+                // 计数器
+                let displayedAnomalies = 0;
+                
+                // 遍历每个传感器的异常
+                Object.keys(sensorGroups).forEach(sensorId => {
+                    const group = sensorGroups[sensorId];
+                    
+                    // 过滤显示的异常类型
+                    const anomalies = group.anomalies.filter(anomaly => {
+                        return typeFilter === 'all' || anomaly.type === typeFilter;
+                    });
+                    
+                    if (anomalies.length === 0) return;
+                    
+                    // 添加传感器标题
+                    const sensorHeader = document.createElement('div');
+                    sensorHeader.className = 'anomaly-sensor-header';
+                    sensorHeader.innerHTML = `<h5>${sensorId} <span style="color: #718096; font-size: 13px;">(${anomalies.length} 个异常)</span></h5>`;
+                    anomalyListElement.appendChild(sensorHeader);
+                    
+                    // 添加每个异常项
+                    anomalies.forEach(anomaly => {
+                        const anomalyItem = document.createElement('div');
+                        anomalyItem.className = 'anomaly-item';
+                        
+                        // 严重异常使用不同样式
+                        if (anomaly.zScore > 5) {
+                            anomalyItem.classList.add('severe');
+                        }
+                        
+                        anomalyItem.innerHTML = `
+                            <div class="anomaly-info">
+                                <div class="anomaly-time">${anomaly.timestamp}</div>
+                                <div class="anomaly-value">值: <b>${anomaly.value}</b></div>
+                                <div class="anomaly-score">Z-score: <b>${anomaly.zScore.toFixed(2)}</b></div>
+                                <div class="anomaly-type">${anomaly.type}</div>
+                            </div>
+                        `;
+                        
+                        anomalyListElement.appendChild(anomalyItem);
+                        displayedAnomalies++;
+                    });
+                });
+                
+                // 如果没有异常，显示提示，但保持图表显示
+                if (displayedAnomalies === 0) {
+                    const noAnomalies = document.createElement('div');
+                    noAnomalies.className = 'no-anomalies-message';
+                    noAnomalies.style.padding = '20px';
+                    noAnomalies.textContent = totalAnomalies > 0 ? 
+                        '当前筛选条件下没有异常点可显示' : 
+                        '未检测到任何异常点，所有数据均在正常范围内';
+                    anomalyListElement.appendChild(noAnomalies);
+                }
+                
+                // 始终创建或更新异常图表，即使没有异常
+                createAnomalyChart(sensorGroups);
+                
+                // 添加到历史记录
+                addToHistory(sensorGroups, totalAnomalies, sensorAnomalyCount);
+            } catch (error) {
+                console.error('显示异常结果时出错:', error);
+            }
+        }
+        
+        // 创建异常图表
+        function createAnomalyChart(sensorGroups) {
+            try {
+                // 查找异常图表容器
+                const chartContainer = document.getElementById('anomaly-chart-container');
+                if (!chartContainer) {
+                    console.error('未找到异常图表容器');
+                    return;
+                }
+                
+                // 创建图表Canvas
+                let chartCanvas = document.getElementById('anomaly-chart');
+                if (!chartCanvas) {
+                    chartCanvas = document.createElement('canvas');
+                    chartCanvas.id = 'anomaly-chart';
+                    chartContainer.appendChild(chartCanvas);
+                }
+                
+                // 如果已有图表，先销毁
+                if (window.anomalyChart) {
+                    try {
+                        if (typeof window.anomalyChart.destroy === 'function') {
+                            window.anomalyChart.destroy();
+                        } else {
+                            const ctx = chartCanvas.getContext('2d');
+                            if (ctx) ctx.clearRect(0, 0, chartCanvas.width, chartCanvas.height);
+                        }
+                    } catch (error) {
+                        console.error('销毁异常图表时出错:', error);
+                    }
+                }
+                
+                // 准备数据集
+                const datasets = [];
+                const colors = [
+                    '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', 
+                    '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', 
+                    '#bcbd22', '#17becf'
+                ];
+                
+                // 为每个传感器创建数据集
+                Object.keys(sensorGroups).forEach((sensorId, index) => {
+                    const group = sensorGroups[sensorId];
+                    const data = [];
+                    
+                    // 正常点
+                    group.timestamps.forEach((timestamp, i) => {
+                        data.push({
+                            x: timestamp,
+                            y: group.values[i],
+                            isAnomaly: false
+                        });
+                    });
+                    
+                    // 创建数据集
+                    datasets.push({
+                        label: sensorId,
+                        data: data,
+                        borderColor: colors[index % colors.length],
+                        backgroundColor: 'transparent',
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        tension: 0.1
+                    });
+                    
+                    // 添加异常点（使用不同样式）
+                    if (group.anomalies.length > 0) {
+                        const anomalyData = group.anomalies.map(anomaly => ({
+                            x: anomaly.timestamp,
+                            y: anomaly.value,
+                            isAnomaly: true,
+                            zScore: anomaly.zScore,
+                            anomalyType: anomaly.type
+                        }));
+                        
+                        datasets.push({
+                            label: `${sensorId} 异常点`,
+                            data: anomalyData,
+                            borderColor: 'transparent',
+                            backgroundColor: '#ff4444',
+                            pointRadius: 6,
+                            pointStyle: 'triangle',
+                            pointRotation: 180,
+                            pointHoverRadius: 8,
+                            showLine: false
+                        });
+                    }
+                });
+                
+                // 如果没有数据，不显示图表
+                if (datasets.length === 0) {
+                    chartContainer.innerHTML = '<div class="no-anomalies-message">没有数据可供图表显示</div>';
+                    return;
+                }
+                
+                // 创建图表
+                window.anomalyChart = new Chart(chartCanvas, {
+                    type: 'line',
+                    data: {
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                type: 'category',
+                                title: {
+                                    display: true,
+                                    text: '时间'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: '值'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const point = context.dataset.data[context.dataIndex];
+                                        let label = context.dataset.label || '';
+                                        
+                                        if (point.isAnomaly) {
+                                            return `${label}: ${point.y} (Z-score: ${point.zScore.toFixed(2)}, ${point.anomalyType})`;
+                                        }
+                                        
+                                        return `${label}: ${point.y}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // 显示图表区域
+                const anomalyChartSection = document.getElementById('anomaly-chart-section');
+                if (anomalyChartSection) {
+                    anomalyChartSection.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('创建异常图表时出错:', error);
+            }
+        }
+        
+        // 添加到历史记录
+        function addToHistory(sensorGroups, totalAnomalies, sensorAnomalyCount) {
+            try {
+                // 创建历史记录条目
+                const historyEntry = {
+                    id: Date.now(),
+                    timestamp: new Date().toLocaleString(),
+                    anomalyCount: totalAnomalies,
+                    sensorCount: sensorAnomalyCount,
+                    dataPoints: window.sensorData.length,
+                    sensorGroups: sensorGroups
+                };
+                
+                // 将历史记录保存到本地存储
+                let historyData = JSON.parse(localStorage.getItem('anomalyHistory') || '[]');
+                historyData.push(historyEntry);
+                localStorage.setItem('anomalyHistory', JSON.stringify(historyData));
+                
+                // 更新历史记录显示
+                updateHistoryList();
+            } catch (error) {
+                console.error('添加历史记录时出错:', error);
+            }
+        }
+        
+        // 更新历史记录列表
+        function updateHistoryList() {
+            try {
+                // 查找历史记录列表容器
+                const historyList = document.getElementById('history-list');
+                if (!historyList) return;
+                
+                // 从本地存储获取历史记录
+                let historyData = JSON.parse(localStorage.getItem('anomalyHistory') || '[]');
+                
+                // 清空当前列表
+                historyList.innerHTML = '';
+                
+                // 如果没有历史记录，显示提示
+                if (historyData.length === 0) {
+                    historyList.innerHTML = '<div class="no-history">暂无历史记录</div>';
+                    return;
+                }
+                
+                // 按时间倒序排列
+                historyData.sort((a, b) => b.id - a.id);
+                
+                // 显示历史记录
+                historyData.forEach(entry => {
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
+                    historyItem.dataset.id = entry.id;
+                    
+                    // 计算严重程度
+                    let severityClass = 'normal';
+                    const anomalyRate = entry.anomalyCount / entry.dataPoints;
+                    if (anomalyRate > 0.05) {
+                        severityClass = 'critical';
+                    } else if (anomalyRate > 0.02) {
+                        severityClass = 'warning';
+                    }
+                    
+                    historyItem.innerHTML = `
+                        <div class="history-header">
+                            <div class="history-time">${entry.timestamp}</div>
+                            <div class="history-stats ${severityClass}">
+                                ${entry.anomalyCount} 异常 / ${entry.dataPoints} 数据点
+                            </div>
+                        </div>
+                        <div class="history-actions">
+                            <button class="history-view-btn" data-id="${entry.id}">查看详情</button>
+                            <button class="history-delete-btn" data-id="${entry.id}">删除</button>
+                        </div>
+                    `;
+                    
+                    historyList.appendChild(historyItem);
+                    
+                    // 添加查看按钮事件
+                    const viewBtn = historyItem.querySelector('.history-view-btn');
+                    viewBtn.addEventListener('click', function() {
+                        viewHistoryItem(entry.id);
+                    });
+                    
+                    // 添加删除按钮事件
+                    const deleteBtn = historyItem.querySelector('.history-delete-btn');
+                    deleteBtn.addEventListener('click', function() {
+                        deleteHistoryItem(entry.id);
+                    });
+                });
+            } catch (error) {
+                console.error('更新历史记录列表时出错:', error);
+            }
+        }
+        
+        // 查看历史记录项
+        function viewHistoryItem(id) {
+            try {
+                // 从本地存储获取历史记录
+                let historyData = JSON.parse(localStorage.getItem('anomalyHistory') || '[]');
+                
+                // 查找对应的历史记录
+                const entry = historyData.find(item => item.id === id);
+                if (!entry) {
+                    console.error('未找到历史记录:', id);
+                    return;
+                }
+                
+                // 显示历史记录详情
+                displayAnomalyResults(entry.sensorGroups, entry.anomalyCount, entry.sensorCount);
+                
+                // 创建历史记录图表
+                createAnomalyChart(entry.sensorGroups);
+                
+                // 切换到分析标签
+                const analysisTab = document.querySelector('.tab[data-tab="analysis"]');
+                if (analysisTab) {
+                    analysisTab.click();
+                }
+            } catch (error) {
+                console.error('查看历史记录时出错:', error);
+            }
+        }
+        
+        // 删除历史记录项
+        function deleteHistoryItem(id) {
+            try {
+                // 确认删除
+                if (!confirm('确定要删除此历史记录吗？')) {
+                    return;
+                }
+                
+                // 从本地存储获取历史记录
+                let historyData = JSON.parse(localStorage.getItem('anomalyHistory') || '[]');
+                
+                // 过滤掉要删除的项
+                historyData = historyData.filter(item => item.id !== id);
+                
+                // 保存更新后的历史记录
+                localStorage.setItem('anomalyHistory', JSON.stringify(historyData));
+                
+                // 更新历史记录显示
+                updateHistoryList();
+            } catch (error) {
+                console.error('删除历史记录时出错:', error);
+            }
+        }
+
+        // 添加清空历史记录函数
+        function clearAllHistory() {
+            try {
+                if (confirm('确定要清空所有历史记录吗？此操作不可恢复。')) {
+                    localStorage.removeItem('anomalyHistory');
+                    updateHistoryList();
+                }
+            } catch (error) {
+                console.error('清空历史记录时出错:', error);
+            }
+        }
+    </script>
+</body>
+</html> 

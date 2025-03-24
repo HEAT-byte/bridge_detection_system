@@ -1,0 +1,1291 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>黑龙江大桥监测系统</title>
+    <!-- 添加网页图标 -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌉</text></svg>">
+    <!-- 引入Chart.js库用于数据可视化 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 引入Material Icons库 -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body {
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f7f9fc;
+            color: #333;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #2c5282, #1a365d);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .logo img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .navbar h1 {
+            margin: 0;
+            font-size: 24px;
+            letter-spacing: 1px;
+        }
+        .navbar-menu {
+            display: flex;
+            align-items: center;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logout-button {
+            background-color: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .logout-button:hover {
+            background-color: rgba(255,255,255,0.3);
+        }
+        /* 登录模态框样式 */
+        .login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .login-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            width: 350px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .login-header h2 {
+            color: #007aff;
+            margin: 0;
+        }
+        .login-form .form-group {
+            margin-bottom: 20px;
+        }
+        .login-form label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        .login-form input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .login-form .login-button {
+            background-color: #007aff;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 4px;
+            width: 100%;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .login-form .login-button:hover {
+            background-color: #0056b3;
+        }
+        .error-message {
+            color: #dc3545;
+            margin-top: 10px;
+            text-align: center;
+        }
+        /* 桥梁示意图样式 */
+        .bridge-container {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            position: relative;
+            height: 300px;
+            overflow: hidden;
+        }
+        .bridge {
+            position: relative;
+            height: 100%;
+            width: 100%;
+        }
+        .bridge-deck {
+            position: absolute;
+            bottom: 120px;
+            left: 5%;
+            width: 90%;
+            height: 20px;
+            background-color: #6c757d;
+        }
+        .bridge-pier {
+            position: absolute;
+            bottom: 0;
+            width: 40px;
+            height: 120px;
+            background-color: #495057;
+        }
+        .bridge-pier:nth-child(1) {
+            left: 10%;
+        }
+        .bridge-pier:nth-child(2) {
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .bridge-pier:nth-child(3) {
+            right: 10%;
+        }
+        .sensor-point {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background-color: #28a745;
+            border: 2px solid white;
+            transform: translate(-50%, -50%);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .sensor-point:hover {
+            transform: translate(-50%, -50%) scale(1.2);
+            z-index: 10;
+        }
+        .sensor-point.warning {
+            background-color: #ffc107;
+        }
+        .sensor-point.danger {
+            background-color: #dc3545;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+        .sensor-tooltip {
+            position: absolute;
+            background-color: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 100;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            padding: 24px;
+            margin-bottom: 24px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 18px;
+            color: #2c5282;
+            border-bottom: 1px solid #edf2f7;
+            padding-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+        .card-title::before {
+            content: "";
+            display: inline-block;
+            width: 4px;
+            height: 18px;
+            background-color: #2c5282;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+        .example-file-link {
+            margin-top: 12px;
+            display: block;
+            font-size: 14px;
+            color: #2c5282;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background-color: #edf2f7;
+            transition: all 0.2s;
+            width: fit-content;
+        }
+        .example-file-link:hover {
+            background-color: #e2e8f0;
+            text-decoration: none;
+            transform: translateY(-2px);
+        }
+        .file-format-info {
+            background-color: #f8fafc;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 8px;
+            font-size: 13px;
+            border-left: 3px solid #2c5282;
+        }
+        .upload-area {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .file-input-container {
+            position: relative;
+            margin-right: 15px;
+            margin-bottom: 10px;
+        }
+        .custom-file-input {
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .custom-file-input:hover {
+            background-color: #e0e0e0;
+        }
+        #fileInput {
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        .button {
+            background-color: #2c5282;
+            color: white;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+        .button:hover {
+            background-color: #3182ce;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.12);
+        }
+        .button:active {
+            transform: translateY(0);
+        }
+        .button.secondary {
+            background-color: #718096;
+        }
+        .button.secondary:hover {
+            background-color: #4a5568;
+        }
+        .button.danger {
+            background-color: #e53e3e;
+        }
+        .button.danger:hover {
+            background-color: #c53030;
+        }
+        .button .material-icons {
+            font-size: 16px;
+            margin-right: 6px;
+        }
+        .button:disabled {
+            background-color: #cbd5e0;
+            color: #718096;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .data-table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #edf2f7;
+            padding: 10px 14px;
+            text-align: left;
+        }
+        .data-table th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        .data-table tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        .data-table tr:hover {
+            background-color: #ebf4ff;
+        }
+        .chart-container {
+            height: 400px;
+            margin-bottom: 20px;
+        }
+        .result-area {
+            margin-top: 30px;
+        }
+        .anomaly-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .anomaly-item {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .anomaly-item.severe {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            color: white;
+            margin-right: 5px;
+        }
+        .status-normal {
+            background-color: #28a745;
+        }
+        .status-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .status-danger {
+            background-color: #dc3545;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 24px;
+            background-color: white;
+            border-radius: 8px 8px 0 0;
+            padding: 0 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .tab {
+            padding: 16px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+            color: #4a5568;
+            transition: all 0.2s;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .tab:hover {
+            color: #2c5282;
+        }
+        .tab.active {
+            border-bottom-color: #2c5282;
+            color: #2c5282;
+            font-weight: 600;
+        }
+        .tab.active::after {
+            content: "";
+            position: absolute;
+            bottom: -3px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 6px;
+            height: 6px;
+            background-color: #2c5282;
+            border-radius: 50%;
+        }
+        .tab-content {
+            display: none;
+            background-color: white;
+            border-radius: 0 0 8px 8px;
+            padding: 10px 0;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #007aff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .analysis-summary {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .info-text {
+            color: #6c757d;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .anomaly-count {
+            font-size: 24px;
+            font-weight: bold;
+            color: #dc3545;
+            margin-right: 5px;
+        }
+        .no-data-message {
+            text-align: center;
+            padding: 30px;
+            color: #6c757d;
+        }
+        .camera-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .camera-item {
+            width: calc(25% - 15px);
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 15px;
+            margin-bottom: 5px;
+            position: relative;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .camera-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .camera-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .camera-name {
+            font-size: 14px;
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .camera-status {
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        .sensor-id {
+            background-color: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-top: 4px;
+            display: inline-block;
+        }
+        .online {
+            background-color: #28a745;
+            color: white;
+        }
+        .offline {
+            background-color: #dc3545;
+            color: white;
+        }
+        .warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .camera-view {
+            position: relative;
+            height: 160px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+        }
+        .camera-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+        }
+        .camera-icon {
+            font-size: 36px;
+            margin-bottom: 10px;
+            color: #6c757d;
+        }
+        .camera-message {
+            font-size: 12px;
+            text-align: center;
+            padding: 0 10px;
+        }
+        .camera-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            border-radius: 6px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .camera-view:hover .camera-overlay {
+            opacity: 1;
+        }
+        .camera-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+        .camera-control-btn {
+            background-color: rgba(255,255,255,0.8);
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            margin: 0 2px;
+            font-size: 12px;
+        }
+        .camera-control-btn:hover {
+            background-color: rgba(255,255,255,1);
+        }
+        .camera-info {
+            margin-top: 20px;
+            padding: 10px 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .camera-alert {
+            color: #007aff;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .location-tag {
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 4px;
+            margin-bottom: 5px;
+            display: block;
+        }
+        /* 列表视图样式 */
+        .camera-list {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .camera-list-item {
+            display: flex;
+            align-items: center;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 10px 15px;
+        }
+        .camera-list-icon {
+            width: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 15px;
+            font-size: 24px;
+        }
+        .camera-list-info {
+            flex-grow: 1;
+        }
+        .camera-list-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .event-status-display {
+            padding: 10px 0;
+        }
+        .event-status-header {
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            color: #2c5282;
+            margin-bottom: 10px;
+        }
+        .event-details {
+            background-color: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #2c5282;
+            transition: all 0.3s ease;
+        }
+        #currentEventName {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        #currentEventDescription {
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+        .event-progress-container {
+            margin-top: 10px;
+        }
+        .event-progress-bar {
+            height: 8px;
+            background-color: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+        .event-progress {
+            height: 100%;
+            background-color: #2c5282;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        .event-progress-text {
+            text-align: right;
+            font-size: 12px;
+            color: #718096;
+        }
+        .event-alert {
+            background-color: #fed7d7;
+            border-left: 3px solid #e53e3e;
+        }
+        .event-alert #currentEventName {
+            color: #c53030;
+        }
+        .event-alert .event-progress {
+            background-color: #e53e3e;
+        }
+        .event-warning {
+            background-color: #feebc8;
+            border-left: 3px solid #dd6b20;
+        }
+        .event-warning #currentEventName {
+            color: #c05621;
+        }
+        .event-warning .event-progress {
+            background-color: #dd6b20;
+        }
+        .event-controls {
+            margin: 15px 0;
+            padding: 15px;
+            background-color: #f8fafc;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .event-controls h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #2d3748;
+            font-size: 16px;
+        }
+        .event-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .event-buttons button {
+            padding: 6px 12px;
+            background-color: #edf2f7;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .event-buttons button:hover {
+            background-color: #e2e8f0;
+        }
+        .event-buttons button.active {
+            background-color: #4299e1;
+            color: white;
+            border-color: #3182ce;
+        }
+        .chart-control-btn {
+            transition: all 0.2s ease;
+        }
+        .chart-control-btn:hover {
+            opacity: 0.9;
+        }
+        .chart-control-btn.active {
+            background-color: #4299e1 !important;
+            color: white !important;
+            border-color: #3182ce !important;
+        }
+        /* 图表标注样式 */
+        .annotation-marker {
+            cursor: pointer;
+            fill: rgba(255, 0, 0, 0.7);
+            stroke: #fff;
+            stroke-width: 2;
+        }
+        .annotation-marker:hover {
+            fill: rgba(255, 0, 0, 0.9);
+            transform: scale(1.2);
+        }
+        .annotation-container {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            z-index: 1000;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            max-width: 250px;
+        }
+        .annotation-form {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 15px;
+            position: absolute;
+            z-index: 1000;
+            width: 300px;
+        }
+        .annotation-form input,
+        .annotation-form textarea,
+        .annotation-form select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .annotation-form textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        .annotation-form button {
+            background-color: #4299e1;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+        .annotation-form button.cancel {
+            background-color: #e2e8f0;
+            color: #4a5568;
+        }
+
+        /* 历史记录样式 */
+        .history-record {
+            background-color: #f8fafc;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-left: 4px solid #4299e1;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .history-record:hover {
+            background-color: #edf2f7;
+            transform: translateX(3px);
+        }
+        .history-record-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .history-record-title {
+            font-weight: bold;
+            color: #2d3748;
+        }
+        .history-record-time {
+            color: #718096;
+            font-size: 12px;
+        }
+        .history-record-summary {
+            color: #4a5568;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .history-record-stats {
+            display: flex;
+            gap: 12px;
+        }
+        .history-record-stat {
+            background-color: #ebf8ff;
+            color: #3182ce;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .history-empty {
+            text-align: center;
+            color: #a0aec0;
+            padding: 30px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- 应用容器 -->
+    <div id="app-container" style="display: block;">
+        <!-- 顶部导航栏 -->
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <div class="logo">
+                    <img src="logo.png" alt="黑龙江大桥监测系统" onerror="this.src='https://via.placeholder.com/40x40?text=HLJ'">
+                </div>
+                <h1>黑龙江大桥监测系统</h1>
+            </div>
+            <div class="navbar-menu">
+                <div class="user-info">
+                    <span id="user-name">管理员</span>
+                    <button id="logout-btn" class="logout-button">登出</button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container">
+            <div class="card">
+                <div class="card-title">数据上传与分析</div>
+                <div class="upload-area">
+                    <div class="file-input-container">
+                        <div class="custom-file-input">
+                            <span class="material-icons">cloud_upload</span>
+                            选择文件
+                        </div>
+                        <input type="file" id="fileInput" accept=".txt,.csv">
+                    </div>
+                    <button class="button" id="uploadButton">
+                        <span class="material-icons">publish</span>
+                        上传数据
+                    </button>
+                    <button class="button secondary" id="resetButton">
+                        <span class="material-icons">restart_alt</span>
+                        重置
+                    </button>
+                    <button class="button" id="detectButton" disabled>
+                        <span class="material-icons">search</span>
+                        开始检测
+                    </button>
+                    <button class="button secondary" id="sampleButton">
+                        <span class="material-icons">data_object</span>
+                        生成示例数据
+                    </button>
+                    <button class="button secondary" id="refreshButton">
+                        <span class="material-icons">autorenew</span>
+                        随机刷新数据
+                    </button>
+                </div>
+                <div class="info-text" id="fileInfo">未选择文件</div>
+                <a href="#" id="downloadExample" class="example-file-link">
+                    <span class="material-icons" style="font-size:16px;vertical-align:middle;">file_download</span> 
+                    下载数据格式示例文件
+                </a>
+                <div class="file-format-info">
+                    <strong>支持的文件格式:</strong>
+                    <ul style="margin-top: 5px; margin-bottom: 5px;">
+                        <li>CSV格式: 时间戳,传感器ID,数值 (每行一条记录)</li>
+                        <li>TXT格式: 时间戳,数值 (每行一条记录，自动分配传感器ID)</li>
+                    </ul>
+                    <div>示例: 2023-06-15 14:30,传感器A,23.45</div>
+                </div>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" data-tab="data">
+                    <span class="material-icons" style="margin-right:8px;">table_chart</span>
+                    数据查看
+                </div>
+                <div class="tab" data-tab="visualization">
+                    <span class="material-icons" style="margin-right:8px;">bar_chart</span>
+                    数据可视化
+                </div>
+                <div class="tab" data-tab="analysis">
+                    <span class="material-icons" style="margin-right:8px;">analytics</span>
+                    异常检测结果
+                </div>
+                <div class="tab" data-tab="monitor">
+                    <span class="material-icons" style="margin-right:8px;">videocam</span>
+                    异常监控
+                </div>
+            </div>
+
+            <div class="tab-content active" id="data-tab">
+                <div class="card">
+                    <div class="card-title">传感器数据</div>
+                    <div class="data-table-container">
+                        <table class="data-table" id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>时间戳</th>
+                                    <th>传感器ID</th>
+                                    <th>数值</th>
+                                    <th>状态</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- 数据行将动态插入 -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="no-data-message" id="noDataMessage">
+                        请上传数据文件开始分析
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="visualization-tab">
+                <div class="card">
+                    <div class="card-title">传感器数据可视化</div>
+                    <div class="chart-container">
+                        <canvas id="dataChart"></canvas>
+                    </div>
+                    <div class="no-data-message" id="noChartDataMessage">
+                        请上传数据文件查看可视化图表
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="analysis-tab">
+                <div class="card">
+                    <div class="card-title">异常检测结果</div>
+                    <div class="loader" id="analysisLoader"></div>
+                    <div class="analysis-summary" id="analysisSummary" style="display:none;">
+                        <!-- 添加分析标签页切换 -->
+                        <div class="analysis-tabs" style="margin-bottom: 20px;">
+                            <button class="analysis-tab active" data-tab="current-analysis">当前检测</button>
+                            <button class="analysis-tab" data-tab="history-analysis">历史记录</button>
+                        </div>
+
+                        <!-- 当前分析内容 -->
+                        <div id="current-analysis" class="analysis-content active">
+                            <h3>数据分析摘要</h3>
+                            <p>总数据点: <span id="totalPoints">0</span></p>
+                            <p>检测到 <span class="anomaly-count" id="anomalyCount">0</span> 个异常</p>
+                            <p>异常类型分布:</p>
+                            <ul>
+                                <li>单点异常: <span id="singlePointCount">0</span></li>
+                                <li>连续性异常: <span id="continuousCount">0</span></li>
+                                <li>群体异常: <span id="clusterCount">0</span></li>
+                            </ul>
+                            
+                            <div class="chart-container" style="position: relative;">
+                                <canvas id="anomalyChart"></canvas>
+                                <!-- 图表工具栏 -->
+                                <div class="chart-tools" style="position: absolute; top: 10px; right: 10px; z-index: 100;">
+                                    <button id="toggleAnnotation" class="chart-tool-btn" title="添加标注" style="background: #4299e1; color: white; border: none; border-radius: 4px; padding: 5px 8px; margin-right: 5px; cursor: pointer;">
+                                        <span class="material-icons" style="font-size: 18px;">add_comment</span>
+                                    </button>
+                                    <button id="clearAnnotations" class="chart-tool-btn" title="清除所有标注" style="background: #e2e8f0; color: #4a5568; border: none; border-radius: 4px; padding: 5px 8px; cursor: pointer;">
+                                        <span class="material-icons" style="font-size: 18px;">clear_all</span>
+                                    </button>
+                                </div>
+                                <!-- 标注容器 -->
+                                <div id="annotation-container" class="annotation-container" style="display: none;"></div>
+                                <!-- 标注表单 -->
+                                <div id="annotation-form" class="annotation-form" style="display: none;">
+                                    <h4 style="margin-top: 0; margin-bottom: 12px;">添加标注</h4>
+                                    <input type="text" id="annotation-title" placeholder="标注标题" />
+                                    <textarea id="annotation-content" placeholder="标注内容"></textarea>
+                                    <select id="annotation-type">
+                                        <option value="info">信息</option>
+                                        <option value="warning">警告</option>
+                                        <option value="critical">严重</option>
+                                    </select>
+                                    <div style="display: flex; justify-content: flex-end;">
+                                        <button id="annotation-cancel" class="cancel">取消</button>
+                                        <button id="annotation-save">保存</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="result-area">
+                                <h3>详细异常列表</h3>
+                                <ul class="anomaly-list" id="anomalyList">
+                                    <!-- 异常项将动态插入 -->
+                                </ul>
+                            </div>
+                            
+                            <div style="margin-top: 20px; text-align: right;">
+                                <button id="saveAnalysisBtn" style="background-color: #4299e1; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
+                                    <span class="material-icons" style="font-size: 16px; margin-right: 4px; vertical-align: text-bottom;">save</span>
+                                    保存到历史记录
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 历史记录内容 -->
+                        <div id="history-analysis" class="analysis-content" style="display: none;">
+                            <div id="history-empty" class="history-empty">
+                                <div class="material-icons" style="font-size: 48px; margin-bottom: 15px; color: #cbd5e0;">history</div>
+                                <div>暂无历史记录</div>
+                            </div>
+                            <div id="history-list">
+                                <!-- 历史记录将动态插入 -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="no-data-message" id="noAnalysisMessage">
+                        请点击"开始检测"按钮进行异常检测
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="monitor-tab">
+                <div class="card">
+                    <div class="card-title">异常位置摄像头监控</div>
+                    <div class="monitor-controls">
+                        <div class="monitor-filter">
+                            <select id="camera-filter" aria-label="摄像头筛选">
+                                <option value="all">所有摄像头</option>
+                                <option value="online">仅在线</option>
+                                <option value="offline">仅离线</option>
+                                <option value="warning">仅异常</option>
+                            </select>
+                            <input type="text" id="camera-search" placeholder="搜索摄像头..." aria-label="搜索摄像头">
+                        </div>
+                        <div class="view-options">
+                            <button class="button secondary" id="view-grid">网格视图</button>
+                            <button class="button secondary" id="view-list">列表视图</button>
+                        </div>
+                    </div>
+                    <div class="camera-grid" id="camera-container">
+                        <!-- 摄像头将通过 JavaScript 动态生成 -->
+                    </div>
+                    <div class="camera-info">
+                        <div class="info-text">点击摄像头图标<span class="material-icons" style="font-size:14px;vertical-align:middle;">videocam</span>可查看实时画面</div>
+                        <div class="camera-alert" id="cameraAlert">
+                            <strong>系统状态:</strong> <span id="system-status">监控系统运行正常</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化系统状态
+        let isAnnotationMode = false;
+        let currentClickPoint = null;
+        let annotations = [];
+        let analysisHistory = [];
+        let activeTab = 'data-upload';  // 默认激活标签
+        let sensorData = [];
+        let anomalyChart = null;
+        let selectedSensors = [];
+        
+        // 页面加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取DOM元素
+            const dataUploadTab = document.getElementById('tab-data-upload');
+            const dataVisTab = document.getElementById('tab-data-vis');
+            const anomalyDetectionTab = document.getElementById('tab-anomaly-detection');
+            const overviewTab = document.getElementById('tab-system-overview');
+            
+            const dataUploadContent = document.getElementById('data-upload');
+            const dataVisContent = document.getElementById('data-visualization');
+            const anomalyDetectionContent = document.getElementById('anomaly-detection');
+            const overviewContent = document.getElementById('system-overview');
+            
+            const fileInput = document.getElementById('file-input');
+            const uploadBtn = document.getElementById('upload-btn');
+            const generateBtn = document.getElementById('generate-sample-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const detectBtn = document.getElementById('detect-btn');
+            const anomalyList = document.getElementById('anomaly-list');
+            
+            // 退出登录
+            document.getElementById('logout-btn').addEventListener('click', function() {
+                if (confirm('确定要退出系统吗？')) {
+                    window.location.reload();
+                }
+            });
+            
+            // 标签页切换
+            document.querySelectorAll('.tab-btn').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // 取消所有激活状态
+                    document.querySelectorAll('.tab-btn').forEach(t => {
+                        t.classList.remove('active');
+                    });
+                    
+                    // 隐藏所有内容
+                    dataUploadContent.style.display = 'none';
+                    dataVisContent.style.display = 'none';
+                    anomalyDetectionContent.style.display = 'none';
+                    overviewContent.style.display = 'none';
+                    
+                    // 激活当前标签
+                    this.classList.add('active');
+                    
+                    // 显示对应内容
+                    const targetId = this.getAttribute('data-target');
+                    document.getElementById(targetId).style.display = 'block';
+                    
+                    // 更新当前激活的标签
+                    activeTab = targetId;
+                });
+            });
+            
+            // 初始化
+            resetAll();
+            
+            // 直接加载历史记录
+            loadHistoryFromLocalStorage();
+            
+            // 初始化事件控制面板
+            initEventControls();
+            
+            // 添加图表标注和历史记录相关的事件监听器
+            document.getElementById('toggleAnnotation').addEventListener('click', toggleAnnotationMode);
+            document.getElementById('clearAnnotations').addEventListener('click', clearAllAnnotations);
+            document.getElementById('annotation-save').addEventListener('click', saveAnnotation);
+            document.getElementById('annotation-cancel').addEventListener('click', hideAnnotationForm);
+            document.getElementById('saveAnalysisBtn').addEventListener('click', saveCurrentAnalysis);
+            
+            // 分析标签页切换监听
+            document.querySelectorAll('.analysis-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // 更新标签状态
+                    document.querySelectorAll('.analysis-tab').forEach(t => {
+                        t.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                    
+                    // 获取目标内容ID
+                    const targetId = this.getAttribute('data-tab');
+                    
+                    // 更新内容显示
+                    document.getElementById('current-analysis').style.display = targetId === 'current-analysis' ? 'block' : 'none';
+                    document.getElementById('history-analysis').style.display = targetId === 'history-analysis' ? 'block' : 'none';
+                    
+                    // 如果切换到历史记录，确保列表是最新的
+                    if (targetId === 'history-analysis') {
+                        updateHistoryList();
+                    }
+                });
+            });
+        });
+        
+        // 确定异常类型
+        function determineAnomalyType(index, values, zScore) {
+            try {
+                // 检查前后是否也是异常，判断连续性异常
+                let isContinuous = false;
+                
+                if (index > 1) {  // 确保有前两个点
+                    try {
+                        isContinuous = Math.abs((values[index-1] - values[index-2]) / Math.max(0.01, Math.abs(values[index-2]))) > 0.1;
+                    } catch (e) {
+                        console.warn("计算前导点连续性异常时出错:", e.message);
+                    }
+                }
+                
+                if (!isContinuous && index < values.length - 1) {  // 检查后一个点
+                    try {
+                        isContinuous = Math.abs((values[index+1] - values[index]) / Math.max(0.01, Math.abs(values[index]))) > 0.1;
+                    } catch (e) {
+                        console.warn("计算后继点连续性异常时出错:", e.message);
+                    }
+                }
+                
+                // 检查周围点是否形成群体
+                const startIdx = Math.max(0, index - 3);
+                const endIdx = Math.min(values.length, index + 4);
+                const nearbyPoints = values.slice(startIdx, endIdx);
+                
+                const nearbyMean = nearbyPoints.reduce((acc, val) => acc + val, 0) / nearbyPoints.length;
+                const globalMean = values.reduce((acc, val) => acc + val, 0) / values.length;
+                
+                // 避免除以零，加入安全检查
+                const denominator = Math.max(0.01, Math.abs(globalMean));
+                const isCluster = Math.abs((nearbyMean - globalMean) / denominator) > 0.1 && nearbyPoints.length >= 3;
+                
+                if (isCluster) {
+                    return '群体异常';
+                } else if (isContinuous) {
+                    return '连续性异常';
+                } else {
+                    return '单点异常';
+                }
+            } catch (error) {
+                console.error("确定异常类型时出错:", error);
+                return '未分类异常';  // 返回一个默认值
+            }
+        }
+    </script>
+</body>
+</html> 

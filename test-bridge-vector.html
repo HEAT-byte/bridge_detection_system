@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>桥梁向量图形测试</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        
+        #container {
+            width: 800px;
+            height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 20px auto;
+            background-color: #f8f9fa;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        button {
+            padding: 8px 15px;
+            background-color: #007aff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0 5px;
+        }
+        
+        #log {
+            width: 800px;
+            height: 200px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 20px auto;
+            padding: 10px;
+            overflow-y: auto;
+            font-family: monospace;
+            background-color: #f8f9fa;
+        }
+    </style>
+    <script>
+        // 覆盖console.log来捕获日志
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        console.log = function() {
+            const args = Array.from(arguments);
+            const logElement = document.getElementById('log');
+            if (logElement) {
+                const message = args.map(arg => 
+                    typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+                ).join(' ');
+                
+                logElement.innerHTML += `<div style="color: #333;">[日志] ${message}</div>`;
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+            originalLog.apply(console, arguments);
+        };
+        
+        console.error = function() {
+            const args = Array.from(arguments);
+            const logElement = document.getElementById('log');
+            if (logElement) {
+                const message = args.map(arg => 
+                    typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+                ).join(' ');
+                
+                logElement.innerHTML += `<div style="color: red;">[错误] ${message}</div>`;
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+            originalError.apply(console, arguments);
+        };
+        
+        console.warn = function() {
+            const args = Array.from(arguments);
+            const logElement = document.getElementById('log');
+            if (logElement) {
+                const message = args.map(arg => 
+                    typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+                ).join(' ');
+                
+                logElement.innerHTML += `<div style="color: orange;">[警告] ${message}</div>`;
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+            originalWarn.apply(console, arguments);
+        };
+        
+        // 创建测试传感器数据
+        function createTestSensorData() {
+            return [
+                { id: 'C001', name: '上游一号塔一号索', type: '应变', value: 235.8, status: 'normal', lastUpdate: '2023-11-10 13:45:23' },
+                { id: 'C002', name: '上游一号塔二号索', type: '应变', value: 242.3, status: 'normal', lastUpdate: '2023-11-10 13:45:22' },
+                { id: 'C003', name: '上游一号塔三号索', type: '应变', value: 267.9, status: 'warning', lastUpdate: '2023-11-10 13:45:20' },
+                { id: 'C004', name: '上游一号塔四号索', type: '应变', value: 229.1, status: 'normal', lastUpdate: '2023-11-10 13:45:18' },
+                { id: 'T001', name: '上游一号塔温度', type: '温度', value: 15.2, status: 'normal', lastUpdate: '2023-11-10 13:45:00' },
+                { id: 'V001', name: '主桥中央振动', type: '振动', value: 0.32, status: 'normal', lastUpdate: '2023-11-10 13:44:50' },
+                { id: 'V002', name: '上游一号塔振动', type: '振动', value: 0.28, status: 'normal', lastUpdate: '2023-11-10 13:44:48' },
+                { id: 'V003', name: '下游一号塔振动', type: '振动', value: 0.45, status: 'warning', lastUpdate: '2023-11-10 13:44:45' }
+            ];
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('页面加载完成');
+            
+            // 检查BridgeVector是否加载
+            if (typeof BridgeVector !== 'undefined') {
+                console.log('BridgeVector模块已加载');
+            } else {
+                console.error('BridgeVector模块未加载');
+            }
+        });
+        
+        // 初始化函数
+        function initBridgeVector() {
+            console.log('正在初始化BridgeVector...');
+            
+            const container = document.getElementById('container');
+            if (!container) {
+                console.error('找不到容器元素');
+                return;
+            }
+            
+            const sensors = createTestSensorData();
+            console.log(`准备 ${sensors.length} 个传感器数据`);
+            
+            try {
+                if (typeof BridgeVector === 'undefined') {
+                    console.error('BridgeVector模块未加载，无法初始化');
+                    return;
+                }
+                
+                const result = BridgeVector.init({
+                    container: container,
+                    sensors: sensors
+                });
+                
+                console.log('BridgeVector初始化结果:', result);
+            } catch (error) {
+                console.error('初始化失败:', error);
+                console.error('错误堆栈:', error.stack);
+            }
+        }
+        
+        // 重新加载模块
+        function reloadModule() {
+            console.log('正在重新加载BridgeVector模块...');
+            
+            const script = document.createElement('script');
+            script.src = './bridge-vector.js?t=' + new Date().getTime();
+            
+            script.onload = function() {
+                console.log('BridgeVector模块已重新加载');
+                document.getElementById('init-btn').disabled = false;
+            };
+            
+            script.onerror = function() {
+                console.error('无法加载BridgeVector模块');
+            };
+            
+            document.head.appendChild(script);
+        }
+    </script>
+</head>
+<body>
+    <h1>桥梁向量图形测试</h1>
+    
+    <div class="controls">
+        <button id="reload-btn" onclick="reloadModule()">加载模块</button>
+        <button id="init-btn" onclick="initBridgeVector()" disabled>初始化模块</button>
+    </div>
+    
+    <div id="container"></div>
+    
+    <div id="log"></div>
+    
+    <!-- 加载桥梁向量图形模块 -->
+    <script>
+        // 页面加载后自动点击加载按钮
+        window.addEventListener('load', function() {
+            // 直接加载简化版模块
+            const script = document.createElement('script');
+            script.src = './bridge-vector-simple.js?t=' + new Date().getTime();
+            script.onload = function() {
+                console.log('简化版桥梁向量模块已加载');
+                document.getElementById('init-btn').disabled = false;
+            };
+            script.onerror = function() {
+                console.error('无法加载简化版桥梁向量模块');
+            };
+            document.head.appendChild(script);
+        });
+    </script>
+</body>
+</html> 
